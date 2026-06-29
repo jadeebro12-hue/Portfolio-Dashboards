@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/capitalops/"
+title = "CapitalOps — Finance Dashboard"
+version = "1.0.0"
+id = "artifacts/capitalops"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/capitalops/" ]
+localPort = 22704
+
+[services.development]
+run = "pnpm --filter @workspace/capitalops run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/capitalops", "run", "build" ]
+publicDir = "artifacts/capitalops/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22704"
+BASE_PATH = "/capitalops/"

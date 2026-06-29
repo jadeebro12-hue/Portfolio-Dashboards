@@ -1,0 +1,53 @@
+Build a polished, portfolio-quality SaaS dashboard concept for a product designer who specializes in dashboards, customer portals, financial products, healthcare interfaces, and other data-heavy products. This should feel like a real B2B product, not a marketing site.
+The main goal is to create one strong dashboard concept I can use in my portfolio and as proof of capability in Upwork bids. The design should instantly communicate: “this designer thinks like a product designer, not a generalist web designer.”
+Product direction
+Create a fictional SaaS product with a modern, trustworthy brand name such as ClientPulse, OpsBoard, MetricFlow, CareStack, or LedgerView. Choose one and make it feel real and enterprise-ready.
+Core experience
+Design a dashboard with these screens:
+•	Overview dashboard.
+•	Detailed analytics page.
+•	Customer/account detail page.
+•	Multi-step workflow wizard.
+•	Notifications/activity panel.
+•	Settings page.
+Dashboard content
+Use realistic SaaS widgets and patterns such as:
+•	KPI cards.
+•	Trend charts.
+•	Tables of accounts, users, patients, claims, invoices, or transactions.
+•	Segmented filters.
+•	Status badges.
+•	Activity feeds.
+•	Detail drawers or modals.
+•	Empty states and loading states.
+Multi-step wizard
+Add a user-friendly multi-step form flow inside the dashboard for a task like customer onboarding, account setup, case review, payment approval, or workspace configuration.
+The wizard should have 4–6 steps with:
+•	A clear progress indicator.
+•	Back and Next buttons.
+•	Step-by-step validation.
+•	Inline error messages.
+•	Preserved form state when going backward.
+•	A final review step.
+•	A success confirmation state.
+Validation should happen on the current step before allowing the user to continue. Do not wait until the last step to reveal errors. Make the first invalid field obvious, keep error messages helpful and concise, and ensure the user never loses correct input when correcting a mistake.
+UX requirements
+Make the form feel supportive and low-friction. Use friendly microcopy, visible labels, accessible controls, clear spacing, and responsive single-column behavior on smaller screens. Support keyboard navigation and make the interaction feel guided rather than punitive.
+Product design quality
+The dashboard should look dense, intelligent, and operational, with strong hierarchy and calm visual design. Favor a neutral palette with one confident accent color. Avoid decorative landing-page styling. This should look like a serious SaaS product built for actual work.
+Portfolio goal
+The output should be screenshot-worthy and suitable for a portfolio case study titled something like:
+•	SaaS Operations Dashboard Concept.
+•	Customer Portal for Product Teams.
+•	Data-Rich Workflow Dashboard.
+•	B2B Product Design Case Study.
+It should also be strong enough to reuse in Upwork proposals when pitching SaaS dashboards, admin panels, portals, or workflow-heavy product design.
+Important
+Do not make this look like:
+•	a restaurant website.
+•	a wedding site.
+•	a photography portfolio.
+•	a generic agency homepage.
+•	or a marketing landing page.
+Focus on building a real product interface that proves product thinking, dashboard design skill, and the ability to design complex SaaS workflows.
+One useful framing is to make the wizard feel like a real operational process, because multi-step forms with inline validation, clear progression, and a review step are a proven way to reduce friction and support completion.
