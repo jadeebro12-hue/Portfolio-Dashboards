@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/portfolio-pulse/"
+title = "Portfolio Pulse — Affordable Housing Dashboard"
+description = "A professional asset management and investor reporting dashboard for LIHTC and HUD-regulated affordable housing portfolios. Designed for institutional asset managers overseeing 15–25 properties. Covers portfolio health, compliance tracking, investor reporting, and rent-restriction monitoring with realistic seeded demo data."
+version = "1.0.0"
+id = "artifacts/portfolio-pulse"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/portfolio-pulse/" ]
+localPort = 24936
+
+[services.development]
+run = "pnpm --filter @workspace/portfolio-pulse run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/portfolio-pulse", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/portfolio-pulse/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24936"
+BASE_PATH = "/portfolio-pulse/"

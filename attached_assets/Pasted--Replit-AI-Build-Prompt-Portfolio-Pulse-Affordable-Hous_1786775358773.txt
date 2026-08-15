@@ -1,0 +1,72 @@
+# Replit AI Build Prompt — Portfolio Pulse (Affordable Housing Asset Management Dashboard)
+
+Copy everything below into Replit's Agent chat as your build prompt.
+
+---
+
+## Prompt to paste into Replit Agent
+
+Build a full-stack web application called **"Portfolio Pulse"** — a real estate asset management and investor reporting dashboard for LIHTC (Low-Income Housing Tax Credit) and HUD-regulated affordable housing portfolios. This is a professional portfolio/demo piece, so prioritize polish, realistic data, and genuinely useful workflows over feature count.
+
+### Tech stack
+- Frontend: React + TypeScript, Next.js (App Router)
+- Backend: Next.js API routes or a lightweight Express layer
+- Database: PostgreSQL (use Replit's built-in Postgres or Neon)
+- ORM: Drizzle or Prisma
+- Styling: Tailwind CSS, shadcn/ui components
+- Charts: Recharts
+- Auth: simple email/password or magic-link auth (Replit Auth is fine) — gate the dashboard behind login, with a "View Demo" button that logs in as a seeded demo user
+
+### Core concept
+The user is an asset manager overseeing a portfolio of 15–25 affordable housing properties. The dashboard should answer three questions at a glance: **Is the portfolio financially healthy? Is it in compliance? What needs my attention this week?**
+
+### Data model (seed with realistic fictional data — no real properties/names)
+- **Properties**: name, address, unit count, funding sources (e.g. 9% LIHTC, 4% LIHTC + tax-exempt bonds, HOME, HUD Section 8), placed-in-service date, compliance period end date, affordability set-asides (e.g. 60% AMI, 50% AMI mix)
+- **Units**: property_id, unit number, bedroom count, AMI restriction tier, current rent, max allowable rent, occupancy status, lease dates
+- **Financials**: monthly income/expense actuals vs. budget by property, categorized (rental income, vacancy loss, operating expenses, debt service, reserve deposits)
+- **Compliance events**: property_id, type (tenant income recertification, Tenant Income Certification / TIC due, HUD REAC inspection, state agency compliance monitoring, annual owner certification), due date, status
+- **Investors/Funders**: name, entity type (LIHTC syndicator, lender, HUD), reporting frequency, next report due date
+
+### Required features
+
+**1. Portfolio Overview**
+- Summary cards: total units, portfolio occupancy %, portfolio-wide budget variance, upcoming compliance deadlines count
+- Occupancy trend chart across the portfolio (last 12 months)
+- Budget vs. actual chart (NOI or operating expense variance) across properties
+
+**2. Property Detail View**
+- Per-property financial summary with budget-vs-actual by line item
+- Unit-level rent roll: current rent, max allowable rent by AMI tier, flag any units over their restriction (compliance risk)
+- Occupancy history for that property
+
+**3. Compliance Tracker**
+- Calendar/list view of upcoming compliance events across the portfolio, sortable by due date and property
+- Status badges (upcoming, due this week, overdue, completed)
+- This is the feature that should feel the most "only someone who's done this job would build it this way" — model it after how TIC recertifications and REAC inspections actually get tracked
+
+**4. Investor Reporting**
+- A page per investor/funder showing which properties they're tied to and when reports are due
+- A "generate report" action that compiles a simple summary (occupancy, financial performance, compliance status) for the selected property/date range — export to PDF
+
+**5. Alerts / Attention Needed**
+- A dashboard widget surfacing: units over rent restriction, compliance items due within 14 days, properties with negative budget variance over a threshold
+
+### Design direction
+- Clean, professional, data-dense but not cluttered — this should look like something an institutional asset manager or LIHTC syndicator would actually trust with their portfolio, not a generic SaaS template
+- Muted, confident color palette (navy/slate base, one accent color for alerts/status)
+- Sidebar navigation: Overview, Properties, Compliance, Investors, Reports
+- Responsive down to tablet width at minimum
+
+### What NOT to do
+- Don't make it a generic "CRM" with contacts/deals/pipelines — this is asset management, not sales
+- Don't use real company, property, or investor names in seed data
+- Don't skip the compliance and rent-restriction logic in favor of just financial charts — that domain-specific logic is the whole point of this piece
+
+### Deliverable
+A working, deployed Replit app with seeded demo data, ready to link from a portfolio site as a live case study, with a short README describing the problem it solves and who it's for.
+
+---
+
+## Notes for using this
+- If Replit's agent asks clarifying questions, steer it toward *fewer, deeper* features rather than sprawl — a tight, correct compliance tracker beats five shallow modules.
+- Once it's running, write the case study copy yourself (or have me draft it) framing this as "built by someone who actually managed LIHTC/HUD compliance for a 20+ asset portfolio" — that's the line that makes this piece do work on Upwork that a generic dashboard can't.
