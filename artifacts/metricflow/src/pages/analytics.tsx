@@ -1,11 +1,42 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { mockRevenueData } from "@/lib/mock-data";
+import { Activity } from "lucide-react";
+import { ChartSkeleton, DataEmptyState, DataErrorState } from "@/components/data-states";
+import { getDataState, retryDataState } from "@/lib/data-state";
+import { metricFlowDesignTokens } from "@/styles/design-tokens";
+import { DesignNote } from "@/components/design-notes";
+
+const conversionData = [
+  { stage: 'Website visits', count: 12500 },
+  { stage: 'Signups', count: 4200 },
+  { stage: 'Trials started', count: 1800 },
+  { stage: 'Paid conversions', count: 450 },
+  { stage: 'Expansions', count: 120 },
+];
+
+const cohortData = [
+  { cohort: "Jan 2024", accounts: 45, retention: [98, 92, 88, 85, 82, 80] },
+  { cohort: "Feb 2024", accounts: 52, retention: [96, 90, 84, 81, 78, null] },
+  { cohort: "Mar 2024", accounts: 38, retention: [99, 95, 92, 88, null, null] },
+];
+
+function retentionFill(value: number) {
+  const heatmap = metricFlowDesignTokens.color.chart.heatmap;
+  const index = Math.max(0, Math.min(heatmap.length - 1, Math.round(((value - 70) / 30) * (heatmap.length - 1))));
+  return heatmap[index];
+}
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("6m");
+  const [activeFunnelStage, setActiveFunnelStage] = useState<string | null>(null);
+  const [activeRetentionCell, setActiveRetentionCell] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
+  const planState = getDataState("plan");
+  const funnelState = getDataState("funnel");
+  const retentionState = getDataState("retention");
 
   const planDistribution = [
     { name: 'Enterprise Plus', value: 15 },
@@ -16,13 +47,16 @@ export default function Analytics() {
 
   const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
-  const conversionData = [
-    { stage: 'Website Visit', count: 12500 },
-    { stage: 'Signup', count: 4200 },
-    { stage: 'Trial Started', count: 1800 },
-    { stage: 'Paid Conversion', count: 450 },
-    { stage: 'Expansion', count: 120 },
-  ];
+  const funnelStages = conversionData.map((stage, index) => {
+    const first = conversionData[0].count;
+    const previous = conversionData[index - 1]?.count;
+    return {
+      ...stage,
+      portfolioConversion: (stage.count / first) * 100,
+      stageConversion: previous ? (stage.count / previous) * 100 : 100,
+      dropOff: previous ? previous - stage.count : 0,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -53,7 +87,20 @@ export default function Analytics() {
             <CardDescription>Accounts breakdown by subscription tier</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
+            {planState === "loading" ? <ChartSkeleton kind="donut" /> : planState === "error" ? (
+              <DataErrorState
+                title="Couldn't load plan distribution"
+                description="Check the subscription connection, then retry to restore account plan data."
+                onRetry={() => retryDataState("plan")}
+              />
+            ) : planState === "empty" ? (
+              <DataEmptyState
+                icon={Activity}
+                title="No plan data yet"
+                description="Add an account with a subscription plan to compare your account mix."
+                action={{ label: "Add Account", onClick: () => setLocation("/onboarding") }}
+              />
+            ) : <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -77,42 +124,128 @@ export default function Analytics() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            }
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="relative">
             <CardTitle>Funnel Conversion</CardTitle>
-            <CardDescription>User journey from visit to expansion</CardDescription>
+            <CardDescription>Acquisition is healthy; the largest absolute drop happens before signup.</CardDescription>
+            <DesignNote
+              number={4}
+              title="Make drop-off actionable"
+              rationale="I made the funnel proportional and surfaced the largest loss in plain language so the team can move from conversion data to a focused improvement opportunity."
+              className="right-5 top-5"
+              side="left"
+            />
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={conversionData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="stage" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={100} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-                    itemStyle={{ color: 'hsl(var(--foreground))' }}
-                    cursor={{fill: 'hsl(var(--secondary))'}}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            {funnelState === "loading" ? <ChartSkeleton kind="funnel" /> : funnelState === "error" ? (
+              <DataErrorState
+                title="Couldn't load conversion funnel"
+                description="Check the acquisition connection, then retry to restore stage conversion data."
+                onRetry={() => retryDataState("funnel")}
+              />
+            ) : funnelState === "empty" ? (
+              <DataEmptyState
+                icon={Activity}
+                title="No conversion data yet"
+                description="MetricFlow will build this funnel after website visits and signups start flowing in."
+                action={{ label: "Go to Accounts", onClick: () => setLocation("/accounts") }}
+              />
+            ) : <>
+            <div className="mb-5 rounded-md border border-primary/20 bg-primary/10 px-3 py-2">
+              <p className="text-xs font-semibold text-primary">0.96% VISITOR → EXPANSION</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">8,300 visitors drop before signup — the clearest conversion opportunity.</p>
             </div>
+            <div className="space-y-2">
+              {funnelStages.map((stage, index) => (
+                <div
+                  key={stage.stage}
+                  className="relative grid grid-cols-[110px_minmax(0,1fr)_98px] items-center gap-3 rounded-sm outline-none"
+                  tabIndex={0}
+                  onPointerEnter={() => setActiveFunnelStage(stage.stage)}
+                  onPointerLeave={() => setActiveFunnelStage(null)}
+                  onFocus={() => setActiveFunnelStage(stage.stage)}
+                  onBlur={() => setActiveFunnelStage(null)}
+                  aria-describedby={`funnel-tooltip-${index}`}
+                >
+                  <div>
+                    <p className="text-xs font-medium leading-tight">{stage.stage}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{stage.count.toLocaleString()} people</p>
+                  </div>
+                  <div className="flex h-9 items-center justify-center rounded-sm bg-secondary/35 px-1">
+                    <div
+                      className="h-6 rounded-sm bg-primary transition-[filter] hover:brightness-125"
+                      style={{ width: `${Math.max(stage.portfolioConversion, 1)}%` }}
+                    />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold tabular-nums">{stage.portfolioConversion.toFixed(index === 0 ? 0 : 1)}%</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                      {index === 0 ? "baseline" : `−${stage.dropOff.toLocaleString()} · ${(100 - stage.stageConversion).toFixed(0)}% loss`}
+                    </p>
+                  </div>
+                  {activeFunnelStage === stage.stage && (
+                    <div id={`funnel-tooltip-${index}`} role="tooltip" className="pointer-events-none absolute left-28 top-full z-20 mt-2 w-56 rounded-md border border-border bg-popover p-2.5 text-left shadow-md">
+                      <p className="text-xs font-semibold">{stage.count.toLocaleString()} people reached {stage.stage.toLowerCase()}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {index === 0
+                          ? "Baseline for this conversion funnel."
+                          : `${stage.stageConversion.toFixed(1)}% advanced from the prior stage; ${stage.dropOff.toLocaleString()} dropped off.`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            </>
+            }
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Cohort Retention (Mock)</CardTitle>
-          <CardDescription>Percentage of accounts active after X months</CardDescription>
+        <CardHeader className="relative">
+          <CardTitle>Cohort Retention</CardTitle>
+          <CardDescription>Retention remains strongest in the March cohort; darker cells indicate higher retained share.</CardDescription>
+          <DesignNote
+            number={5}
+            title="Compare cohorts at a glance"
+            rationale="I use one teal intensity scale rather than multiple competing colors, so a manager can compare retention strength across months before reading individual percentages."
+            className="right-5 top-5"
+            side="left"
+          />
         </CardHeader>
         <CardContent>
+          {retentionState === "loading" ? <ChartSkeleton kind="cohort" /> : retentionState === "error" ? (
+            <DataErrorState
+              title="Couldn't load cohort retention"
+              description="Check the account activity connection, then retry to restore retention data."
+              onRetry={() => retryDataState("retention")}
+            />
+          ) : retentionState === "empty" ? (
+            <DataEmptyState
+              icon={Activity}
+              title="No cohort data yet"
+              description="MetricFlow will show retention cohorts after accounts have activity across multiple months."
+              action={{ label: "Go to Accounts", onClick: () => setLocation("/accounts") }}
+            />
+          ) : <>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-chart-2/20 bg-chart-2/10 px-3 py-2">
+            <div>
+              <p className="text-xs font-semibold text-chart-2">88% RETAINED AT MONTH 3</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">The March cohort is 4 points ahead of February at the same point.</p>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span>Lower</span>
+              <div className="h-2 w-24 rounded-full" style={{ background: `linear-gradient(90deg, ${metricFlowDesignTokens.color.chart.heatmap[0]}, ${metricFlowDesignTokens.color.chart.heatmap[5]})` }} />
+              <span>Higher</span>
+            </div>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full min-w-[700px] text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b">
                 <tr>
                   <th className="px-4 py-3 rounded-tl-md">Cohort</th>
@@ -126,39 +259,42 @@ export default function Analytics() {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Jan 2024</td>
-                  <td className="px-4 py-3">45</td>
-                  <td className="px-4 py-3 bg-emerald-500/90 text-white font-medium rounded-sm m-1 block text-center">98%</td>
-                  <td className="px-4 py-3 bg-emerald-500/80 text-white font-medium rounded-sm m-1 block text-center">92%</td>
-                  <td className="px-4 py-3 bg-emerald-500/70 text-white font-medium rounded-sm m-1 block text-center">88%</td>
-                  <td className="px-4 py-3 bg-emerald-500/60 text-white font-medium rounded-sm m-1 block text-center">85%</td>
-                  <td className="px-4 py-3 bg-emerald-500/50 text-white font-medium rounded-sm m-1 block text-center">82%</td>
-                  <td className="px-4 py-3 bg-emerald-500/40 text-foreground font-medium rounded-sm m-1 block text-center">80%</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="px-4 py-3 font-medium">Feb 2024</td>
-                  <td className="px-4 py-3">52</td>
-                  <td className="px-4 py-3 bg-emerald-500/90 text-white font-medium rounded-sm m-1 block text-center">96%</td>
-                  <td className="px-4 py-3 bg-emerald-500/80 text-white font-medium rounded-sm m-1 block text-center">90%</td>
-                  <td className="px-4 py-3 bg-emerald-500/60 text-white font-medium rounded-sm m-1 block text-center">84%</td>
-                  <td className="px-4 py-3 bg-emerald-500/50 text-white font-medium rounded-sm m-1 block text-center">81%</td>
-                  <td className="px-4 py-3 bg-emerald-500/40 text-foreground font-medium rounded-sm m-1 block text-center">78%</td>
-                  <td className="px-4 py-3 text-muted-foreground text-center">-</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 font-medium">Mar 2024</td>
-                  <td className="px-4 py-3">38</td>
-                  <td className="px-4 py-3 bg-emerald-500/90 text-white font-medium rounded-sm m-1 block text-center">99%</td>
-                  <td className="px-4 py-3 bg-emerald-500/80 text-white font-medium rounded-sm m-1 block text-center">95%</td>
-                  <td className="px-4 py-3 bg-emerald-500/70 text-white font-medium rounded-sm m-1 block text-center">92%</td>
-                  <td className="px-4 py-3 bg-emerald-500/60 text-white font-medium rounded-sm m-1 block text-center">88%</td>
-                  <td className="px-4 py-3 text-muted-foreground text-center">-</td>
-                  <td className="px-4 py-3 text-muted-foreground text-center">-</td>
-                </tr>
+                {cohortData.map((cohort) => (
+                  <tr key={cohort.cohort} className="border-b last:border-0">
+                    <td className="px-4 py-3 font-medium">{cohort.cohort}</td>
+                    <td className="px-4 py-3 tabular-nums">{cohort.accounts}</td>
+                    {cohort.retention.map((retention, index) => (
+                      <td key={`${cohort.cohort}-${index}`} className="p-1.5">
+                        {retention === null ? (
+                          <div className="py-2 text-center text-muted-foreground">—</div>
+                        ) : (
+                          <div
+                            className={`relative flex h-10 cursor-default items-center justify-center rounded-sm font-semibold tabular-nums shadow-sm outline-none ${retention >= 88 ? "text-background" : "text-foreground"}`}
+                            style={{ backgroundColor: retentionFill(retention) }}
+                            tabIndex={0}
+                            onPointerEnter={() => setActiveRetentionCell(`${cohort.cohort}-${index}`)}
+                            onPointerLeave={() => setActiveRetentionCell(null)}
+                            onFocus={() => setActiveRetentionCell(`${cohort.cohort}-${index}`)}
+                            onBlur={() => setActiveRetentionCell(null)}
+                            aria-describedby={`retention-tooltip-${cohort.cohort}-${index}`}
+                          >
+                            {retention}%
+                            {activeRetentionCell === `${cohort.cohort}-${index}` && (
+                              <div id={`retention-tooltip-${cohort.cohort}-${index}`} role="tooltip" className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-44 -translate-x-1/2 rounded-md border border-border bg-popover p-2.5 text-left shadow-md">
+                                <p className="text-xs font-semibold">{cohort.cohort} · Month {index + 1}</p>
+                                <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground tabular-nums">{retention}%</span> of the original {cohort.accounts} accounts remain active.</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          </>}
         </CardContent>
       </Card>
     </div>

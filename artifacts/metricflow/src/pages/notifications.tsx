@@ -1,12 +1,18 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { mockNotifications } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bell, AlertTriangle, CheckSquare, MessageSquare, Check, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DataEmptyState, DataErrorState, NotificationsSkeleton } from "@/components/data-states";
+import { getDataState, retryDataState } from "@/lib/data-state";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState(mockNotifications);
+  const [activeTab, setActiveTab] = useState("all");
+  const [, setLocation] = useLocation();
+  const notificationsState = getDataState("notifications");
 
   const markAllRead = () => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
@@ -19,8 +25,8 @@ export default function Notifications() {
   const getIcon = (type: string) => {
     switch(type) {
       case 'alert': return <AlertTriangle className="h-4 w-4 text-destructive" />;
-      case 'task': return <CheckSquare className="h-4 w-4 text-amber-500" />;
-      case 'mention': return <MessageSquare className="h-4 w-4 text-blue-500" />;
+      case 'task': return <CheckSquare className="h-4 w-4 text-warning" />;
+      case 'mention': return <MessageSquare className="h-4 w-4 text-primary" />;
       default: return <Bell className="h-4 w-4" />;
     }
   };
@@ -28,12 +34,32 @@ export default function Notifications() {
   const renderList = (filterType: string) => {
     const filtered = filterType === 'all' ? notifications : notifications.filter(n => n.type === filterType);
 
-    if (filtered.length === 0) {
+    if (notificationsState === "loading") {
+      return <NotificationsSkeleton />;
+    }
+
+    if (notificationsState === "error") {
       return (
-        <div className="py-12 text-center text-muted-foreground flex flex-col items-center">
-          <CheckCircle2 className="h-12 w-12 mb-4 text-muted/30" />
-          <p>You're all caught up!</p>
-        </div>
+        <DataErrorState
+          title="Couldn't load notifications"
+          description="Check your connection, then retry to restore account health updates and team activity."
+          onRetry={() => retryDataState("notifications")}
+        />
+      );
+    }
+
+    if (notificationsState === "empty" || filtered.length === 0) {
+      return (
+        <DataEmptyState
+          icon={CheckCircle2}
+          title={filterType === "all" ? "No notifications yet" : `No ${filterType}s right now`}
+          description={filterType === "all"
+            ? "MetricFlow will flag account health changes and team activity here."
+            : "Switch to All to review the rest of your team updates."}
+          action={filterType === "all"
+            ? { label: "Go to Accounts", onClick: () => setLocation("/accounts") }
+            : { label: "View All", onClick: () => setActiveTab("all") }}
+        />
       );
     }
 
@@ -75,7 +101,7 @@ export default function Notifications() {
         </Button>
       </div>
 
-      <Tabs defaultValue="all" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="alert">Alerts</TabsTrigger>

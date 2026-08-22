@@ -5,12 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, ChevronRight, Check } from "lucide-react";
+import { CheckCircle2, ChevronRight, Check, CreditCard } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { DataEmptyState, DataErrorState, WizardSkeleton } from "@/components/data-states";
+import { getDataState, retryDataState } from "@/lib/data-state";
+import { DesignNote } from "@/components/design-notes";
 
 const steps = [
   { id: 1, name: "Company" },
@@ -45,8 +49,14 @@ const configSchema = z.object({
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [formData, setFormData] = useState<any>({});
+  const [isProvisioning, setIsProvisioning] = useState(false);
+  const [provisionError, setProvisionError] = useState(false);
   const [, setLocation] = useLocation();
+  const shouldReduceMotion = useReducedMotion();
+  const onboardingState = getDataState("onboarding");
+  const provisioningState = getDataState("provisioning");
 
   const companyForm = useForm({
     resolver: zodResolver(companySchema),
@@ -70,23 +80,75 @@ export default function Onboarding() {
 
   const handleNext = (data: any) => {
     setFormData((prev: any) => ({ ...prev, ...data }));
+    setDirection(1);
     setCurrentStep((prev) => Math.min(prev + 1, 5));
   };
 
   const handleBack = () => {
+    setDirection(-1);
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const [isComplete, setIsComplete] = useState(false);
 
   const handleComplete = () => {
-    setIsComplete(true);
+    setProvisionError(false);
+    setIsProvisioning(true);
+    window.setTimeout(() => {
+      setIsProvisioning(false);
+      if (provisioningState === "error") {
+        setProvisionError(true);
+        return;
+      }
+      setIsComplete(true);
+    }, 450);
   };
+
+  if (onboardingState === "loading" || isProvisioning) {
+    return <WizardSkeleton />;
+  }
+
+  if (onboardingState === "error") {
+    return (
+      <div className="mx-auto max-w-3xl py-16">
+        <DataErrorState
+          title="Couldn't load provisioning setup"
+          description="Check the provisioning connection, then retry to load account plans and integration options."
+          onRetry={() => retryDataState("onboarding")}
+        />
+      </div>
+    );
+  }
+
+  if (onboardingState === "empty") {
+    return (
+      <div className="mx-auto max-w-3xl py-16">
+        <DataEmptyState
+          icon={CreditCard}
+          title="No provisioning templates are available"
+          description="Add a billing plan before provisioning a new account for your team."
+          action={{ label: "Go to Settings", onClick: () => setLocation("/settings") }}
+        />
+      </div>
+    );
+  }
+
+  if (provisionError) {
+    return (
+      <div className="mx-auto max-w-3xl py-16">
+        <DataErrorState
+          title="Couldn't provision this account"
+          description="Check the billing and integration details, then retry provisioning the account."
+          onRetry={handleComplete}
+        />
+      </div>
+    );
+  }
 
   if (isComplete) {
     return (
       <div className="max-w-2xl mx-auto py-16 text-center space-y-6">
-        <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8">
+        <div className="w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-8">
           <CheckCircle2 className="w-10 h-10" />
         </div>
         <h2 className="text-3xl font-bold tracking-tight">Account Provisioned Successfully</h2>
@@ -113,6 +175,13 @@ export default function Onboarding() {
       </div>
 
       <div className="relative">
+        <DesignNote
+          number={6}
+          title="Progress keeps its context"
+          rationale="I use a persistent stepper and directional transitions so the provisioning flow feels ordered while preserving the context of what came before and what remains."
+          className="-right-3 -top-3"
+          side="left"
+        />
         <div className="absolute top-4 left-0 right-0 h-0.5 bg-secondary -z-10" />
         <div 
           className="absolute top-4 left-0 h-0.5 bg-primary -z-10 transition-all duration-500" 
@@ -137,6 +206,26 @@ export default function Onboarding() {
       </div>
 
       <Card className="mt-8 border-primary/20 shadow-lg shadow-primary/5">
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            variants={{
+              enter: (travel: number) => ({
+                opacity: shouldReduceMotion ? 1 : 0,
+                x: shouldReduceMotion ? 0 : travel > 0 ? 18 : -18,
+              }),
+              center: { opacity: 1, x: 0 },
+              exit: (travel: number) => ({
+                opacity: shouldReduceMotion ? 1 : 0,
+                x: shouldReduceMotion ? 0 : travel > 0 ? -18 : 18,
+              }),
+            }}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.18, ease: "easeOut" }}
+          >
         <CardHeader>
           <CardTitle>
             {currentStep === 1 && "Company Information"}
@@ -418,13 +507,15 @@ export default function Onboarding() {
               </div>
               <div className="flex justify-between pt-4">
                 <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
-                <Button onClick={handleComplete} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={handleComplete} className="bg-success hover:bg-success/90 text-background">
                   <CheckCircle2 className="mr-2 w-4 h-4"/> Provision Account
                 </Button>
               </div>
             </div>
           )}
         </CardContent>
+          </motion.div>
+        </AnimatePresence>
       </Card>
     </div>
   );

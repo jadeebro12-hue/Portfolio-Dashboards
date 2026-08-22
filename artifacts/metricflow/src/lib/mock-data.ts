@@ -30,6 +30,15 @@ export const mockRevenueData = [
   { month: 'Jun', mrr: 182000, target: 175000 },
 ];
 
+export const mockChurnData = [
+  { month: 'Jan', churn: 2.3 },
+  { month: 'Feb', churn: 2.1 },
+  { month: 'Mar', churn: 1.8 },
+  { month: 'Apr', churn: 1.9 },
+  { month: 'May', churn: 1.6 },
+  { month: 'Jun', churn: 1.2 },
+];
+
 export const mockAccountGrowth = [
   { month: 'Jan', active: 145, churned: 2 },
   { month: 'Feb', active: 152, churned: 3 },
@@ -56,10 +65,10 @@ export const mockActivityFeed = [
 
 export const getStatusColor = (status: string) => {
   switch(status) {
-    case 'active': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-    case 'at-risk': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+    case 'active': return 'bg-success/10 text-success border-success/20';
+    case 'at-risk': return 'bg-warning/10 text-warning border-warning/20';
     case 'churned': return 'bg-destructive/10 text-destructive border-destructive/20';
-    case 'trial': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+    case 'trial': return 'bg-primary/10 text-primary border-primary/20';
     default: return 'bg-muted text-muted-foreground';
   }
 };

@@ -1,0 +1,1 @@
+- [MetricFlow visual system](metricflow-visual-system.md) — approved instrument-panel direction with Signal Blue, functional status colors, and distinct display/data type roles.

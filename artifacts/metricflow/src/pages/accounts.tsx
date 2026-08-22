@@ -1,18 +1,23 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { mockAccounts, getStatusColor } from "@/lib/mock-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, MoreHorizontal, Download } from "lucide-react";
+import { Search, Filter, MoreHorizontal, Download, Building2, FilterX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AccountListSkeleton, DataEmptyState, DataErrorState } from "@/components/data-states";
+import { getDataState, retryDataState } from "@/lib/data-state";
+import { DesignNote } from "@/components/design-notes";
 
 export default function Accounts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [, setLocation] = useLocation();
+  const accountsState = getDataState("accounts");
 
   const filteredAccounts = mockAccounts.filter(account => {
     const matchesSearch = account.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -68,13 +73,45 @@ export default function Accounts() {
           </div>
         </CardHeader>
         <CardContent>
+          {accountsState === "loading" ? (
+            <AccountListSkeleton />
+          ) : accountsState === "error" ? (
+            <DataErrorState
+              title="Couldn't load accounts"
+              description="Check your billing source connection, then retry to restore account health scores."
+              onRetry={() => retryDataState("accounts")}
+            />
+          ) : accountsState === "empty" ? (
+            <DataEmptyState
+              icon={Building2}
+              title="No accounts are tracking yet"
+              description="Add your first account to start monitoring health scores, ARR, and customer activity."
+              action={{ label: "Add Account", onClick: () => setLocation("/onboarding") }}
+            />
+          ) : filteredAccounts.length === 0 ? (
+            <DataEmptyState
+              icon={FilterX}
+              title="No accounts match these filters"
+              description="Clear the search or status filter to see the accounts your team is tracking."
+              action={{ label: "Clear Filters", onClick: () => { setSearchTerm(""); setStatusFilter("all"); } }}
+            />
+          ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Account Name</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Health</TableHead>
+                  <TableHead className="relative">
+                    Health
+                    <DesignNote
+                      number={3}
+                      title="Health is a fast scan"
+                      rationale="I pair the health score with a semantic progress bar so a CSM can scan account risk across the list before opening a detail view."
+                      className="left-14 top-2"
+                      side="bottom"
+                    />
+                  </TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Users</TableHead>
                   <TableHead>CSM</TableHead>
@@ -83,15 +120,8 @@ export default function Accounts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAccounts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No accounts found matching your filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredAccounts.map((account) => (
-                    <TableRow key={account.id}>
+                {filteredAccounts.map((account) => (
+                    <TableRow key={account.id} className="group">
                       <TableCell className="font-medium">
                         <Link href={`/accounts/${account.id}`} className="hover:underline text-primary">
                           {account.name}
@@ -99,7 +129,7 @@ export default function Accounts() {
                         <div className="text-xs text-muted-foreground mt-0.5">Last active {account.lastActivity}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`capitalize ${getStatusColor(account.status)}`}>
+                        <Badge variant="outline" className={`capitalize transition-colors duration-150 ${getStatusColor(account.status)}`}>
                           {account.status}
                         </Badge>
                       </TableCell>
@@ -107,7 +137,7 @@ export default function Accounts() {
                         <div className="flex items-center gap-2">
                           <div className="w-16 bg-secondary rounded-full h-1.5">
                             <div 
-                              className={`h-1.5 rounded-full ${account.health > 80 ? 'bg-emerald-500' : account.health > 50 ? 'bg-amber-500' : 'bg-destructive'}`} 
+                              className={`h-1.5 rounded-full transition-[width,background-color] duration-150 ease-out ${account.health > 80 ? 'bg-success' : account.health > 50 ? 'bg-warning' : 'bg-destructive'}`} 
                               style={{ width: `${account.health}%` }}
                             />
                           </div>
@@ -133,16 +163,16 @@ export default function Accounts() {
                             </DropdownMenuItem>
                             <DropdownMenuItem>Log Activity</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-amber-500">Flag at Risk</DropdownMenuItem>
+                            <DropdownMenuItem className="text-warning">Flag at Risk</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
+                  ))}
               </TableBody>
             </Table>
           </div>
+          )}
           <div className="text-xs text-muted-foreground mt-4 text-right">
             Showing {filteredAccounts.length} of {mockAccounts.length} accounts
           </div>

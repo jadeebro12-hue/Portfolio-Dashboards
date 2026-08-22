@@ -1,4 +1,4 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { mockAccounts, getStatusColor } from "@/lib/mock-data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Building, Mail, Phone, MapPin, CreditCard, Activity, Users, FileText, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { AccountDetailSkeleton, ChartSkeleton, DataEmptyState, DataErrorState } from "@/components/data-states";
+import { getDataState, retryDataState } from "@/lib/data-state";
 
 export default function AccountDetail() {
   const params = useParams();
-  const account = mockAccounts.find(a => a.id === params.id) || mockAccounts[0]; // Fallback to first if not found for mock
+  const [, setLocation] = useLocation();
+  const accountState = getDataState("account");
+  const usageState = getDataState("usage");
+  const account = mockAccounts.find(a => a.id === params.id);
 
   const usageData = [
     { date: 'Mon', api: 1200, web: 4500 },
@@ -20,6 +25,37 @@ export default function AccountDetail() {
     { date: 'Sat', api: 800, web: 2100 },
     { date: 'Sun', api: 950, web: 2400 },
   ];
+
+  if (accountState === "loading") {
+    return <AccountDetailSkeleton />;
+  }
+
+  if (accountState === "error") {
+    return (
+      <div className="space-y-6">
+        <Link href="/accounts" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to Accounts</Link>
+        <DataErrorState
+          title="Couldn't load this account"
+          description="Check the account connection, then retry to restore account health, activity, and usage."
+          onRetry={() => retryDataState("account")}
+        />
+      </div>
+    );
+  }
+
+  if (!account || accountState === "empty") {
+    return (
+      <div className="space-y-6">
+        <Link href="/accounts" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to Accounts</Link>
+        <DataEmptyState
+          icon={Building}
+          title="This account isn't available"
+          description="Return to Accounts and choose another account to review its health, usage, and activity."
+          action={{ label: "Back to Accounts", onClick: () => setLocation("/accounts") }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -70,7 +106,7 @@ export default function AccountDetail() {
               <div className="text-2xl font-bold">{account.health}</div>
               <div className="w-full bg-secondary rounded-full h-1.5 ml-2">
                 <div 
-                  className={`h-1.5 rounded-full ${account.health > 80 ? 'bg-emerald-500' : account.health > 50 ? 'bg-amber-500' : 'bg-destructive'}`} 
+                  className={`h-1.5 rounded-full ${account.health > 80 ? 'bg-success' : account.health > 50 ? 'bg-warning' : 'bg-destructive'}`} 
                   style={{ width: `${account.health}%` }}
                 />
               </div>
@@ -112,7 +148,7 @@ export default function AccountDetail() {
               <CardContent>
                 <div className="space-y-6">
                   <div className="flex gap-4">
-                    <div className="mt-0.5"><CheckCircle2 className="h-5 w-5 text-emerald-500" /></div>
+                    <div className="mt-0.5"><CheckCircle2 className="h-5 w-5 text-success" /></div>
                     <div>
                       <p className="text-sm font-medium">QBR Completed successfully</p>
                       <p className="text-xs text-muted-foreground mt-1">By {account.csm} • 2 weeks ago</p>
@@ -120,7 +156,7 @@ export default function AccountDetail() {
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <div className="mt-0.5"><AlertCircle className="h-5 w-5 text-amber-500" /></div>
+                    <div className="mt-0.5"><AlertCircle className="h-5 w-5 text-warning" /></div>
                     <div>
                       <p className="text-sm font-medium">Usage drop detected</p>
                       <p className="text-xs text-muted-foreground mt-1">System • 3 weeks ago</p>
@@ -128,7 +164,7 @@ export default function AccountDetail() {
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <div className="mt-0.5"><Users className="h-5 w-5 text-blue-500" /></div>
+                    <div className="mt-0.5"><Users className="h-5 w-5 text-primary" /></div>
                     <div>
                       <p className="text-sm font-medium">Added 15 new seats</p>
                       <p className="text-xs text-muted-foreground mt-1">System • 1 month ago</p>
@@ -195,7 +231,20 @@ export default function AccountDetail() {
               <CardDescription>Daily active users and API requests</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px] w-full">
+              {usageState === "loading" ? <ChartSkeleton /> : usageState === "error" ? (
+                <DataErrorState
+                  title="Couldn't load usage data"
+                  description="Check the usage connection, then retry to restore web actions and API requests."
+                  onRetry={() => retryDataState("usage")}
+                />
+              ) : usageState === "empty" ? (
+                <DataEmptyState
+                  icon={Activity}
+                  title="No usage activity yet"
+                  description="Connect an integration to start tracking web actions and API requests for this account."
+                  action={{ label: "Go to Settings", onClick: () => setLocation("/settings") }}
+                />
+              ) : <div className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={usageData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
@@ -208,8 +257,8 @@ export default function AccountDetail() {
                         <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                     <RechartsTooltip 
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}
@@ -220,6 +269,7 @@ export default function AccountDetail() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
+              }
             </CardContent>
           </Card>
         </TabsContent>
