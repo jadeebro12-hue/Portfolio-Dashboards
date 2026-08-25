@@ -1,8 +1,8 @@
 # React Dashboard Portfolio
 
-Three production-quality dashboard applications built to demonstrate real-world React development skills across different industries. All dashboards feature comprehensive realistic mock data and are fully interactive.
+Three polished React dashboard applications built as portfolio case studies across SaaS operations, finance operations, and affordable housing asset management. Each app uses realistic mock data and interactive UI patterns to demonstrate product thinking—not just visual styling.
 
-**Built with:** React · TypeScript · Tailwind CSS · shadcn/ui · Recharts · Wouter · Vite · pnpm Workspaces
+**Built with:** React · TypeScript · Tailwind CSS · shadcn/ui · Radix UI · Recharts · Framer Motion · Wouter · Vite · pnpm Workspaces
 
 ---
 
@@ -48,15 +48,32 @@ Designed for institutional asset managers overseeing 15–25 affordable housing 
 
 > Customer analytics, account management, and onboarding automation for a SaaS company.
 
-![MetricFlow Dashboard](screenshots/metricflow.jpg)
+![MetricFlow Dashboard](screenshots/metricflow-design-notes-off.jpg)
 
-**Key features:**
+MetricFlow is designed for a CS manager who needs to answer “is this account okay?” in seconds and then move directly into the right follow-up.
+
+**Product features:**
 - MRR, churn rate, active accounts, and revenue trend charts with month-over-month indicators
 - Cohort retention analysis and funnel conversion charts
 - Account list with health scores, status badges, and search/filter
 - Account detail view with usage charts, activity timeline, and contact management
 - 5-step customer onboarding wizard with per-step validation, back/next navigation, and a review screen
 - Notifications feed and Settings
+- Intentional loading skeletons, empty states, and recovery states across every data-driven view
+
+**Design work:**
+- Approved dark instrument-panel design system with Signal Blue actions, functional health colors, Plus Jakarta Sans display type, and Inter data type
+- Chart redesigns that surface decision context directly in MRR, churn, funnel, and retention views
+- Restrained dashboard entrance motion, hover feedback, directional wizard transitions, and reduced-motion support
+- Toggleable **Design Notes** mode: six first-person rationale popovers explain the UX decisions behind the dashboard, charts, account health scan, and onboarding flow
+
+### MetricFlow design walkthrough
+
+The default product stays clean for everyday use. Turn on **Design Notes** from the floating control in the lower-right corner to reveal the thinking behind six key design decisions—built for recruiters and clients evaluating redesign work.
+
+| Default product experience | Data-state and interaction examples |
+|---|---|
+| ![MetricFlow default dashboard](screenshots/metricflow-design-notes-off.jpg) | ![MetricFlow data-state matrix](screenshots/metricflow-data-state-matrix.jpg) |
 
 **Live demo:** *(add published URL)*
 
@@ -71,6 +88,7 @@ Designed for institutional asset managers overseeing 15–25 affordable housing 
 | Styling | Tailwind CSS v4 |
 | Components | shadcn/ui + Radix UI |
 | Charts | Recharts |
+| Motion | Framer Motion with reduced-motion support |
 | Routing | Wouter |
 | State | TanStack React Query |
 | Monorepo | pnpm workspaces |
@@ -91,7 +109,11 @@ lib/
 screenshots/
 ├── portfolio-pulse.jpg
 ├── capitalops.jpg
-└── metricflow.jpg
+├── metricflow-design-notes-off.jpg
+├── metricflow-data-state-matrix.jpg
+├── metricflow-token-system-dashboard.jpg
+├── metricflow-token-system-mobile-accounts.jpg
+└── metricflow-motion-polish.jpg
 ```
 
 ---
