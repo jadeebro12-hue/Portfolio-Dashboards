@@ -24,7 +24,7 @@ type Measure = "units" | "listings" | "properties"
 
 function MeasureTag({ measure }: { measure: Measure }) {
   return (
-    <span className="rounded border px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <span className="rounded border px-1 text-[11px] font-semibold uppercase leading-4 tracking-wide text-muted-foreground">
       {measure}
     </span>
   )

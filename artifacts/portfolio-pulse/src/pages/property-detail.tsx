@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { StatusBadge } from "@/components/status-badge"
 import { DataSection, ChartSkeleton, RowsSkeleton, EmptyState } from "@/components/data-states"
 import { complianceStatus, healthTone, occupancyStatus, toneText } from "@/lib/status"
+import { useDataState } from "@/lib/data-state"
 import { 
   LineChart, 
   Line, 
@@ -35,6 +36,7 @@ import {
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const property = properties.find(p => p.id === id);
+  const ready = useDataState().status === "ready";
   
   if (!property) {
     return (
@@ -96,13 +98,13 @@ export default function PropertyDetail() {
             <dl className="grid w-full grid-cols-2 divide-x rounded-lg border bg-card shadow-sm sm:w-auto">
               <div className="px-4 py-3 sm:px-5">
                 <dt className="text-xs font-medium text-muted-foreground">Health Score</dt>
-                <dd className={cn("text-2xl font-semibold tabular-nums", toneText[healthToneValue])}>
-                  {property.statusHealthScore}<span className="text-base font-medium text-muted-foreground">/100</span>
+                <dd className={cn("text-2xl font-semibold tabular-nums", ready ? toneText[healthToneValue] : "text-muted-foreground")}>
+                  {ready ? <>{property.statusHealthScore}<span className="text-base font-medium text-muted-foreground">/100</span></> : "—"}
                 </dd>
               </div>
               <div className="px-4 py-3 sm:px-5">
                 <dt className="text-xs font-medium text-muted-foreground">Occupancy</dt>
-                <dd className="text-2xl font-semibold tabular-nums">{formatPercentage(property.currentOccupancyPct)}</dd>
+                <dd className={cn("text-2xl font-semibold tabular-nums", !ready && "text-muted-foreground")}>{ready ? formatPercentage(property.currentOccupancyPct) : "—"}</dd>
               </div>
             </dl>
           }
@@ -130,7 +132,7 @@ export default function PropertyDetail() {
               <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
                   <CardTitle>Unit Rent Roll</CardTitle>
-                  <CardDescription>All {property.totalUnits} units with rent-restriction checks. Rows over the AMI limit are flagged.</CardDescription>
+                  <CardDescription>{ready ? `All ${property.totalUnits} units` : "Every unit"} with rent-restriction checks. Rows over the AMI limit are flagged.</CardDescription>
                   <p className="text-xs text-muted-foreground md:hidden">Swipe the table sideways to see rents →</p>
                 </div>
                 {overRentUnits.length > 0 && (

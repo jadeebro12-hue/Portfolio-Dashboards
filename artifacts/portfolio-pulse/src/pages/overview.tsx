@@ -182,13 +182,13 @@ export default function Overview() {
                 <MetricInfo metric="economicOccupancy" />
               </div>
               <CardTitle className="pt-1">
-                {econMin != null && econMax != null
+                {ready && econMin != null && econMax != null
                   ? `Economic occupancy held between ${formatPct(econMin)} and ${formatPct(econMax)} over 12 months`
                   : "Economic occupancy"}
               </CardTitle>
               <CardDescription>
                 Rent earned ÷ gross potential rent, by month.
-                {econDelta != null && <> Latest month {formatPct(latestEcon?.economicOccupancy)} ({econDelta >= 0 ? "+" : "−"}{Math.abs(econDelta * 100).toFixed(1)} pts vs prior month).</>}
+                {ready && econDelta != null && <> Latest month {formatPct(latestEcon?.economicOccupancy)} ({econDelta >= 0 ? "+" : "−"}{Math.abs(econDelta * 100).toFixed(1)} pts vs prior month).</>}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -230,9 +230,9 @@ export default function Overview() {
                   </ResponsiveContainer>
                 </DataSection>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
+              {ready && <p className="mt-3 text-xs text-muted-foreground">
                 Physical occupancy ({formatPct(funnel.physicalOccupancy)}) is a single rent-roll snapshot, so it can't be trended. Economic occupancy assumes rental income is net of vacancy; that assumption reconciles to rent-roll gross potential rent for {formatPct(model.gpr.matchRate, 0)} of property-months.
-              </p>
+              </p>}
             </CardContent>
           </Card>
 
