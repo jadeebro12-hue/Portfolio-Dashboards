@@ -10,7 +10,11 @@ Three polished React dashboard applications built as portfolio case studies acro
 
 > A decision-oriented data product for LIHTC and HUD-regulated affordable housing portfolios: portfolio health → property diagnosis → action queue, with data trust made visible at every step.
 
-![Portfolio Pulse Dashboard](screenshots/portfolio-pulse.jpg)
+![Portfolio Pulse — Portfolio Health](screenshots/portfolio-pulse.jpg)
+
+| Inventory & Data Trust | Action Queue | Mobile (390px) |
+|---|---|---|
+| ![Inventory & Data Trust: physical units vs listing activity](screenshots/portfolio-pulse-data-trust.jpg) | ![Action Queue: ranked exceptions with reasons and suggested actions](screenshots/portfolio-pulse-action-queue.jpg) | ![Portfolio Health on a phone](screenshots/portfolio-pulse-mobile.jpg) |
 
 > **Presenting this in an interview?** See the [Portfolio Pulse interview guide](artifacts/portfolio-pulse/INTERVIEW_GUIDE.md): 30-second pitch, affordable-housing primer, numbers cheat sheet, page tour, a 2-minute demo script and likely questions.
 
@@ -159,6 +163,9 @@ lib/
 └── db/                  # Drizzle ORM schema
 screenshots/
 ├── portfolio-pulse.jpg
+├── portfolio-pulse-data-trust.jpg
+├── portfolio-pulse-action-queue.jpg
+├── portfolio-pulse-mobile.jpg
 ├── capitalops.jpg
 ├── metricflow-design-notes-off.jpg
 ├── metricflow-data-state-matrix.jpg
