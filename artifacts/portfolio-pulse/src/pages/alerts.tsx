@@ -1,129 +1,141 @@
+import * as React from "react"
 import { AppLayout } from "@/components/layout/app-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { 
-  getOverRentUnits, 
-  getOverdueCompliance, 
+import { PageHeader } from "@/components/layout/page-header"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataSection, EmptyState, RowsSkeleton } from "@/components/data-states"
+import {
+  getOverRentUnits,
+  getOverdueCompliance,
   getNegativeNOIProperties,
-  properties 
+  properties
 } from "@/lib/mock-data"
 import { Link } from "wouter"
-import { AlertTriangle, AlertCircle, DollarSign, ArrowRight } from "lucide-react"
-import { formatCurrency, formatPercentage } from "@/lib/utils"
+import { AlertCircle, DollarSign, ArrowRight, CheckCircle2 } from "lucide-react"
+import { formatCurrency, formatPercentage, cn } from "@/lib/utils"
+import { toneText, type StatusTone } from "@/lib/status"
+import { useDataState } from "@/lib/data-state"
+
+function AlertGroup({
+  title,
+  count,
+  tone,
+  icon: Icon,
+  children,
+}: {
+  title: string
+  count: number
+  tone: StatusTone
+  icon: React.ElementType
+  children: React.ReactNode
+}) {
+  return (
+    <Card className={cn("overflow-hidden", tone === "critical" ? "border-destructive/30" : "border-warning/40")}>
+      <CardHeader className={cn("border-b py-4 sm:py-4", tone === "critical" ? "bg-destructive/5" : "bg-warning/10")}>
+        <CardTitle className={cn("flex items-center gap-2", toneText[tone])}>
+          <Icon className="size-5 shrink-0" aria-hidden />
+          {title}
+          <span className="ml-auto rounded-full bg-card px-2 text-sm font-medium tabular-nums text-foreground shadow-sm">{count}</span>
+        </CardTitle>
+      </CardHeader>
+      <ul className="divide-y divide-border">{children}</ul>
+    </Card>
+  )
+}
+
+function AlertRow({ title, detail, href, action }: { title: React.ReactNode; detail: React.ReactNode; href: string; action: string }) {
+  return (
+    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="min-w-0">
+        <p className="font-semibold">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+      </div>
+      <Link
+        href={href}
+        className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted sm:h-9"
+      >
+        {action} <ArrowRight className="size-4" aria-hidden />
+      </Link>
+    </li>
+  )
+}
 
 export default function Alerts() {
   const overRent = getOverRentUnits();
   const overdueComp = getOverdueCompliance();
   const negativeNOI = getNegativeNOIProperties();
-  
+
   const totalAlerts = overRent.length + overdueComp.length + negativeNOI.length;
+  const { status } = useDataState();
 
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-destructive flex items-center gap-3">
-            <AlertTriangle className="h-8 w-8" />
-            Attention Needed
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            You have {totalAlerts} items requiring intervention across the portfolio.
-          </p>
-        </div>
+        <PageHeader
+          title="Attention Needed"
+          description={
+            status === "ready" ? (
+              <>You have <span className="font-semibold text-danger-text tabular-nums">{totalAlerts}</span> items requiring intervention across the portfolio.</>
+            ) : status === "loading" ? "Checking the portfolio…"
+              : status === "empty" ? "No items need intervention."
+              : "Alert counts are unavailable right now."
+          }
+        />
 
-        {overRent.length > 0 && (
-          <Card className="border-destructive/50">
-            <CardHeader className="bg-destructive/5 pb-4 border-b">
-              <CardTitle className="text-lg text-destructive flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Rent Restriction Violations ({overRent.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
+        <DataSection
+          skeleton={<Card className="overflow-hidden"><RowsSkeleton rows={6} /></Card>}
+          isEmpty={totalAlerts === 0}
+          empty={<Card><EmptyState icon={CheckCircle2} title="All clear" description="No rent violations, overdue compliance events or NOI shortfalls right now." /></Card>}
+        >
+          <div className="flex flex-col gap-6">
+            {overRent.length > 0 && (
+              <AlertGroup title="Rent Restriction Violations" count={overRent.length} tone="critical" icon={AlertCircle}>
                 {overRent.map(u => {
                   const prop = properties.find(p => p.id === u.propertyId);
                   return (
-                    <div key={u.id} className="p-4 flex items-center justify-between hover:bg-muted/30">
-                      <div>
-                        <div className="font-semibold">{prop?.name} - Unit {u.unitNumber}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Current rent {formatCurrency(u.currentRent)} exceeds max allowable {formatCurrency(u.maxAllowableRent)} 
-                          ({u.amiTier}% AMI restriction).
-                        </div>
-                      </div>
-                      <Link href={`/properties/${u.propertyId}`}>
-                        <Badge variant="outline" className="cursor-pointer hover:bg-muted">Resolve <ArrowRight className="ml-1 h-3 w-3"/></Badge>
-                      </Link>
-                    </div>
+                    <AlertRow
+                      key={u.id}
+                      title={<>{prop?.name} · Unit {u.unitNumber}</>}
+                      detail={<>Current rent <span className="font-medium text-danger-text tabular-nums">{formatCurrency(u.currentRent)}</span> exceeds max allowable <span className="tabular-nums">{formatCurrency(u.maxAllowableRent)}</span> ({u.amiTier}% AMI restriction).</>}
+                      href={`/properties/${u.propertyId}`}
+                      action="Resolve"
+                    />
                   )
                 })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </AlertGroup>
+            )}
 
-        {overdueComp.length > 0 && (
-          <Card className="border-destructive/50">
-            <CardHeader className="bg-destructive/5 pb-4 border-b">
-              <CardTitle className="text-lg text-destructive flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Overdue Compliance Events ({overdueComp.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
+            {overdueComp.length > 0 && (
+              <AlertGroup title="Overdue Compliance Events" count={overdueComp.length} tone="critical" icon={AlertCircle}>
                 {overdueComp.map(e => {
                   const prop = properties.find(p => p.id === e.propertyId);
                   return (
-                    <div key={e.id} className="p-4 flex items-center justify-between hover:bg-muted/30">
-                      <div>
-                        <div className="font-semibold">{prop?.name}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {e.eventType} was due on <span className="font-medium text-destructive">{e.dueDate}</span>
-                        </div>
-                      </div>
-                      <Link href={`/compliance`}>
-                        <Badge variant="outline" className="cursor-pointer hover:bg-muted">Resolve <ArrowRight className="ml-1 h-3 w-3"/></Badge>
-                      </Link>
-                    </div>
+                    <AlertRow
+                      key={e.id}
+                      title={prop?.name}
+                      detail={<>{e.eventType} was due on <span className="font-medium text-danger-text tabular-nums">{e.dueDate}</span></>}
+                      href="/compliance"
+                      action="Resolve"
+                    />
                   )
                 })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </AlertGroup>
+            )}
 
-        {negativeNOI.length > 0 && (
-          <Card className="border-warning/50">
-            <CardHeader className="bg-warning/10 pb-4 border-b">
-              <CardTitle className="text-lg text-warning-foreground flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Severe Financial Underperformance ({negativeNOI.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {negativeNOI.map((item, idx) => {
-                  return (
-                    <div key={idx} className="p-4 flex items-center justify-between hover:bg-muted/30">
-                      <div>
-                        <div className="font-semibold">{item.property.name}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          NOI missed budget by <span className="font-medium text-destructive">{formatCurrency(item.variance)}</span> ({formatPercentage(item.variancePct)}).
-                        </div>
-                      </div>
-                      <Link href={`/properties/${item.property.id}`}>
-                        <Badge variant="outline" className="cursor-pointer hover:bg-muted">Review <ArrowRight className="ml-1 h-3 w-3"/></Badge>
-                      </Link>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
+            {negativeNOI.length > 0 && (
+              <AlertGroup title="Severe Financial Underperformance" count={negativeNOI.length} tone="warning" icon={DollarSign}>
+                {negativeNOI.map((item, idx) => (
+                  <AlertRow
+                    key={idx}
+                    title={item.property.name}
+                    detail={<>NOI missed budget by <span className="font-medium text-danger-text tabular-nums">{formatCurrency(item.variance)}</span> ({formatPercentage(item.variancePct)}).</>}
+                    href={`/properties/${item.property.id}`}
+                    action="Review"
+                  />
+                ))}
+              </AlertGroup>
+            )}
+          </div>
+        </DataSection>
       </div>
     </AppLayout>
   )

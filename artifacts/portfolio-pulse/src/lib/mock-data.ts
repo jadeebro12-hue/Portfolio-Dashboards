@@ -2,6 +2,9 @@ import { addDays, subMonths, startOfMonth, format, subDays, addMonths, isBefore,
 
 const TODAY = new Date();
 
+/** Snapshot date the mock data is generated relative to (app load time). */
+export const DATA_AS_OF = TODAY;
+
 export type FundingSource = "9% LIHTC" | "4% LIHTC + Tax-Exempt Bonds" | "HOME" | "HUD Section 8" | "State Trust Fund";
 
 export interface Property {
