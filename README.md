@@ -21,6 +21,8 @@ Designed for institutional asset managers overseeing 15–25 affordable housing 
 - Investor Reporting with **PDF export** — generates a formatted compliance and financial summary per investor/funder
 - Alerts widget surfaces rent violations, overdue compliance events, and properties with negative NOI variance
 
+**UX details:** fully responsive from 390px phones to 1440px desktops (slide-out navigation, card layouts for tables on mobile, sideways-scrolling rent roll with a sticky unit column, 44px touch targets); one shared status system (good / warning / critical) with AA-contrast colors; and loading skeletons, empty states and error states with retry on every data view. Use the **Demo data state** control in the sidebar, or add `?state=loading|empty|error` to the URL, to see each state.
+
 **Domain logic:** AMI rent restriction enforcement, LIHTC compliance period tracking, HUD/LIHTC/HOME/State Trust Fund funding source classification, TIC recertification workflows
 
 **Live demo:** *(add published URL)*

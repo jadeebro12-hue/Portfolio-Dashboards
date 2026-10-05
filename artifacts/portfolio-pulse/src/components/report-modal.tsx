@@ -4,7 +4,10 @@ import { Download, X, Building2, TrendingUp, TrendingDown, Shield, AlertTriangle
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
+import { complianceStatus } from "@/lib/status";
 import {
+  type ComplianceEvent,
   Investor,
   properties,
   financials,
@@ -20,6 +23,10 @@ interface ReportModalProps {
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+const NUMERIC_COLS = new Set([
+  "Units", "Occupancy", "NOI Actual", "vs Budget", "Actual", "Budget", "Variance",
+  "Current Rent", "Max Allowable", "Over by",
+]);
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 export function ReportModal({ investor, open, onClose }: ReportModalProps) {
@@ -72,24 +79,9 @@ export function ReportModal({ investor, open, onClose }: ReportModalProps) {
 
   const getPropertyName = (id: string) => properties.find((p) => p.id === id)?.name ?? id;
 
-  const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      overdue: "bg-red-100 text-red-800 border-red-200",
-      "due-this-week": "bg-amber-100 text-amber-800 border-amber-200",
-      upcoming: "bg-blue-100 text-blue-800 border-blue-200",
-      completed: "bg-green-100 text-green-800 border-green-200",
-    };
-    const label: Record<string, string> = {
-      overdue: "Overdue",
-      "due-this-week": "Due This Week",
-      upcoming: "Upcoming",
-      completed: "Completed",
-    };
-    return (
-      <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${map[status] ?? ""}`}>
-        {label[status] ?? status}
-      </span>
-    );
+  const statusBadge = (status: ComplianceEvent["status"]) => {
+    const st = complianceStatus[status];
+    return <StatusBadge tone={st.tone}>{st.label}</StatusBadge>;
   };
 
   const handlePrint = () => {
@@ -303,21 +295,21 @@ ${violations.length > 0 ? `
     };
   };
 
-  const varColor = noiVariance >= 0 ? "text-green-600" : "text-red-600";
+  const varColor = noiVariance >= 0 ? "text-success-text" : "text-danger-text";
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="grid-cols-[minmax(0,1fr)] w-[calc(100vw-1.5rem)] max-w-3xl max-h-[90dvh] overflow-y-auto overflow-x-hidden rounded-lg p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <DialogTitle className="text-xl">{investor.name}</DialogTitle>
+          <div className="flex flex-col gap-3 pr-10 text-left sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <DialogTitle className="text-xl leading-tight">{investor.name}</DialogTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {investor.entityType} &middot; {investor.reportingFrequency} Reporting &middot; Next due:{" "}
                 <span className="font-medium text-foreground">{investor.nextReportDueDate}</span>
               </p>
             </div>
-            <Button onClick={handlePrint} className="gap-2 shrink-0 ml-4">
+            <Button onClick={handlePrint} className="shrink-0 w-full sm:w-auto">
               <Download className="h-4 w-4" />
               Download PDF
             </Button>
@@ -331,25 +323,25 @@ ${violations.length > 0 ? `
               { label: "Total Units", value: totalUnitsCount.toLocaleString(), sub: `${investorProps.length} properties` },
               { label: "Avg Occupancy", value: pct(avgOccupancy), sub: "Portfolio weighted" },
               { label: "NOI vs Budget", value: `${noiVariance >= 0 ? "+" : ""}${fmt(noiVariance)}`, sub: `${noiVariancePct >= 0 ? "+" : ""}${(noiVariancePct * 100).toFixed(1)}% variance`, color: varColor },
-              { label: "Compliance", value: `${overdueEvents.length} Overdue`, sub: `${dueThisWeek.length} due this week`, color: overdueEvents.length > 0 ? "text-red-600" : "text-foreground" },
+              { label: "Compliance", value: `${overdueEvents.length} Overdue`, sub: `${dueThisWeek.length} due this week`, color: overdueEvents.length > 0 ? "text-danger-text" : "text-foreground" },
             ].map((k) => (
               <div key={k.label} className="border rounded-md p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{k.label}</div>
-                <div className={`text-xl font-bold mt-1 ${k.color ?? "text-foreground"}`}>{k.value}</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{k.sub}</div>
+                <div className="text-xs font-medium text-muted-foreground">{k.label}</div>
+                <div className={`text-lg sm:text-xl font-semibold mt-1 tabular-nums ${k.color ?? "text-foreground"}`}>{k.value}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{k.sub}</div>
               </div>
             ))}
           </div>
 
           {/* Violation alert */}
           {violations.length > 0 && (
-            <div className="flex gap-3 bg-red-50 border border-red-200 rounded-md p-3 text-sm">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex gap-3 bg-destructive/5 border border-destructive/25 rounded-md p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 text-danger-text shrink-0 mt-0.5" aria-hidden />
               <div>
-                <p className="font-semibold text-red-800">
+                <p className="font-semibold text-danger-text">
                   {violations.length} Rent Restriction Violation{violations.length > 1 ? "s" : ""} Detected
                 </p>
-                <p className="text-red-700 text-xs mt-0.5">
+                <p className="text-foreground/80 text-xs mt-0.5">
                   Units where current rent exceeds AMI-restricted maximum. Immediate remediation required.
                 </p>
               </div>
@@ -361,12 +353,12 @@ ${violations.length > 0 ? `
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
               <Building2 className="h-3.5 w-3.5" /> Property Performance — {format(subMonths(today, 1), "MMMM yyyy")}
             </h3>
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full text-xs">
+            <div className="scroll-x border rounded-md">
+              <table className="w-full min-w-[520px] text-xs">
                 <thead className="bg-muted/50">
                   <tr>
                     {["Property", "Location", "Units", "Occupancy", "NOI Actual", "vs Budget"].map((h) => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground border-b">
+                      <th key={h} className={`${NUMERIC_COLS.has(h) ? "text-right" : "text-left"} px-3 py-2 font-medium text-[11px] uppercase tracking-wide whitespace-nowrap text-muted-foreground border-b`}>
                         {h}
                       </th>
                     ))}
@@ -386,10 +378,10 @@ ${violations.length > 0 ? `
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="px-3 py-2 font-medium">{p.name}</td>
                         <td className="px-3 py-2 text-muted-foreground">{p.city}, {p.state}</td>
-                        <td className="px-3 py-2">{p.totalUnits}</td>
-                        <td className="px-3 py-2">{(p.currentOccupancyPct * 100).toFixed(1)}%</td>
-                        <td className="px-3 py-2 font-medium">{fmt(noi)}</td>
-                        <td className={`px-3 py-2 font-semibold ${v >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        <td className="px-3 py-2 text-right tabular-nums">{p.totalUnits}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{(p.currentOccupancyPct * 100).toFixed(1)}%</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-medium">{fmt(noi)}</td>
+                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${v >= 0 ? "text-success-text" : "text-danger-text"}`}>
                           {v >= 0 ? "+" : ""}{fmt(v)}
                         </td>
                       </tr>
@@ -405,37 +397,37 @@ ${violations.length > 0 ? `
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
               <TrendingUp className="h-3.5 w-3.5" /> Financial Summary
             </h3>
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full text-xs">
+            <div className="scroll-x border rounded-md">
+              <table className="w-full min-w-[520px] text-xs">
                 <thead className="bg-muted/50">
                   <tr>
                     {["Line Item", "Actual", "Budget", "Variance"].map((h) => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground border-b">{h}</th>
+                      <th key={h} className={`${NUMERIC_COLS.has(h) ? "text-right" : "text-left"} px-3 py-2 font-medium text-[11px] uppercase tracking-wide whitespace-nowrap text-muted-foreground border-b`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b hover:bg-muted/20">
                     <td className="px-3 py-2">Rental Income</td>
-                    <td className="px-3 py-2 font-medium">{fmt(totalRentActual)}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{fmt(totalRentBudget)}</td>
-                    <td className={`px-3 py-2 font-semibold ${totalRentActual >= totalRentBudget ? "text-green-600" : "text-red-600"}`}>
+                    <td className="px-3 py-2 text-right tabular-nums font-medium">{fmt(totalRentActual)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(totalRentBudget)}</td>
+                    <td className={`px-3 py-2 text-right tabular-nums font-semibold ${totalRentActual >= totalRentBudget ? "text-success-text" : "text-danger-text"}`}>
                       {fmt(totalRentActual - totalRentBudget)}
                     </td>
                   </tr>
                   <tr className="border-b hover:bg-muted/20">
                     <td className="px-3 py-2">Operating Expenses</td>
-                    <td className="px-3 py-2 font-medium">{fmt(totalExpActual)}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{fmt(totalExpBudget)}</td>
-                    <td className={`px-3 py-2 font-semibold ${totalExpActual <= totalExpBudget ? "text-green-600" : "text-red-600"}`}>
+                    <td className="px-3 py-2 text-right tabular-nums font-medium">{fmt(totalExpActual)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(totalExpBudget)}</td>
+                    <td className={`px-3 py-2 text-right tabular-nums font-semibold ${totalExpActual <= totalExpBudget ? "text-success-text" : "text-danger-text"}`}>
                       {fmt(totalExpActual - totalExpBudget)}
                     </td>
                   </tr>
                   <tr className="bg-muted/30 font-semibold hover:bg-muted/40">
                     <td className="px-3 py-2">Net Operating Income</td>
-                    <td className="px-3 py-2">{fmt(totalNOIActual)}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{fmt(totalNOIBudget)}</td>
-                    <td className={`px-3 py-2 ${noiVariance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    <td className="px-3 py-2 text-right tabular-nums">{fmt(totalNOIActual)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(totalNOIBudget)}</td>
+                    <td className={`px-3 py-2 text-right tabular-nums ${noiVariance >= 0 ? "text-success-text" : "text-danger-text"}`}>
                       {noiVariance >= 0 ? "+" : ""}{fmt(noiVariance)}
                     </td>
                   </tr>
@@ -450,12 +442,12 @@ ${violations.length > 0 ? `
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
                 <Shield className="h-3.5 w-3.5" /> Compliance Events — Active & Upcoming
               </h3>
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full text-xs">
+              <div className="scroll-x border rounded-md">
+                <table className="w-full min-w-[520px] text-xs">
                   <thead className="bg-muted/50">
                     <tr>
                       {["Property", "Event Type", "Due Date", "Status"].map((h) => (
-                        <th key={h} className="text-left px-3 py-2 font-semibold text-[10px] uppercase tracking-wider text-muted-foreground border-b">{h}</th>
+                        <th key={h} className={`${NUMERIC_COLS.has(h) ? "text-right" : "text-left"} px-3 py-2 font-medium text-[11px] uppercase tracking-wide whitespace-nowrap text-muted-foreground border-b`}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -464,7 +456,7 @@ ${violations.length > 0 ? `
                       <tr key={e.id} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="px-3 py-2 font-medium">{getPropertyName(e.propertyId)}</td>
                         <td className="px-3 py-2 text-muted-foreground">{e.eventType}</td>
-                        <td className="px-3 py-2">{e.dueDate}</td>
+                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{e.dueDate}</td>
                         <td className="px-3 py-2">{statusBadge(e.status)}</td>
                       </tr>
                     ))}
@@ -478,14 +470,14 @@ ${violations.length > 0 ? `
           {violations.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
-                <AlertTriangle className="h-3.5 w-3.5 text-red-600" /> Rent Restriction Violations
+                <AlertTriangle className="h-3.5 w-3.5 text-danger-text" aria-hidden /> Rent Restriction Violations
               </h3>
-              <div className="border border-red-200 rounded-md overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-red-50">
+              <div className="scroll-x border border-destructive/25 rounded-md">
+                <table className="w-full min-w-[520px] text-xs">
+                  <thead className="bg-destructive/5">
                     <tr>
                       {["Property", "Unit", "AMI Tier", "Current Rent", "Max Allowable", "Over by"].map((h) => (
-                        <th key={h} className="text-left px-3 py-2 font-semibold text-[10px] uppercase tracking-wider text-red-700 border-b border-red-200">{h}</th>
+                        <th key={h} className={`${NUMERIC_COLS.has(h) ? "text-right" : "text-left"} px-3 py-2 font-medium text-[11px] uppercase tracking-wide whitespace-nowrap text-danger-text border-b border-destructive/25`}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -494,13 +486,13 @@ ${violations.length > 0 ? `
                       const prop = properties.find((p) => p.id === u.propertyId);
                       const over = u.currentRent - u.maxAllowableRent;
                       return (
-                        <tr key={u.id} className="border-b last:border-0 bg-red-50/40">
+                        <tr key={u.id} className="border-b last:border-0 bg-destructive/[0.03]">
                           <td className="px-3 py-2 font-medium">{prop?.name}</td>
                           <td className="px-3 py-2">{u.unitNumber}</td>
                           <td className="px-3 py-2">{u.amiTier}% AMI</td>
-                          <td className="px-3 py-2 font-medium">{fmt(u.currentRent)}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{fmt(u.maxAllowableRent)}</td>
-                          <td className="px-3 py-2 font-semibold text-red-600">+{fmt(over)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-medium">{fmt(u.currentRent)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmt(u.maxAllowableRent)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-semibold text-danger-text">+{fmt(over)}</td>
                         </tr>
                       );
                     })}
@@ -510,7 +502,7 @@ ${violations.length > 0 ? `
             </div>
           )}
 
-          <p className="text-[10px] text-muted-foreground text-center pt-2 border-t">
+          <p className="text-xs text-muted-foreground text-center pt-3 border-t">
             Portfolio Pulse &mdash; Demo Environment. All data is mocked. Generated {format(today, "MMMM d, yyyy")}.
           </p>
         </div>

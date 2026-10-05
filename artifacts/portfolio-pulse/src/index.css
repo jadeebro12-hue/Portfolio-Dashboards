@@ -4,8 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -46,6 +44,13 @@
   
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
+
+  /* Status text tokens: AA contrast (>= 4.5:1) on white and on their own 10% tint */
+  --color-success-text: hsl(var(--success-text));
+  --color-warning-text: hsl(var(--warning-text));
+  --color-danger-text: hsl(var(--danger-text));
+  --color-info: hsl(var(--info));
+  --color-info-text: hsl(var(--info-text));
 
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
@@ -95,7 +100,7 @@
   --secondary-foreground: 222.2 47.4% 22.2%;
   
   --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%; /* slate-500 */
+  --muted-foreground: 215.3 19.3% 34.5%; /* slate-600: 7:1 on white, readable at 12px */
   
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 22.2%;
@@ -108,6 +113,13 @@
   
   --success: 142.1 76.2% 36.3%; /* green-600 */
   --success-foreground: 355.7 100% 97.3%;
+
+  /* Status system: good / warning / critical / info */
+  --success-text: 142.4 71.8% 29.2%; /* green-700 */
+  --warning-text: 22.7 82.5% 31.4%; /* amber-800 */
+  --danger-text: 0 73.7% 41.8%; /* red-700 */
+  --info: 217.2 91.2% 59.8%; /* blue-500 */
+  --info-text: 224.3 76.3% 48%; /* blue-700 */
 
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
@@ -134,8 +146,37 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Recharts focuses its SVG wrapper on click; the default outline looks like a bug. */
+  .recharts-wrapper:focus,
+  .recharts-surface:focus {
+    outline: none;
+  }
+}
+
+@layer utilities {
+  /* Thin horizontal scroller with a visible-but-quiet scrollbar for wide tables. */
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

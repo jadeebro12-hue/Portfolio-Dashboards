@@ -13,7 +13,11 @@ import {
 import { properties, units, financials, complianceEvents } from "@/lib/mock-data"
 import { formatCurrency, formatPercentage, cn } from "@/lib/utils"
 import { useParams, Link } from "wouter"
-import { ArrowLeft, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react"
+import { ArrowLeft, AlertTriangle, CheckCircle2, AlertCircle, ChevronRight, Clock, Building2, LineChart as LineChartIcon } from "lucide-react"
+import { PageHeader } from "@/components/layout/page-header"
+import { StatusBadge } from "@/components/status-badge"
+import { DataSection, ChartSkeleton, RowsSkeleton, EmptyState } from "@/components/data-states"
+import { complianceStatus, healthTone, occupancyStatus, toneText } from "@/lib/status"
 import { 
   LineChart, 
   Line, 
@@ -33,7 +37,22 @@ export default function PropertyDetail() {
   const property = properties.find(p => p.id === id);
   
   if (!property) {
-    return <AppLayout><div>Property not found</div></AppLayout>;
+    return (
+      <AppLayout>
+        <Card>
+          <EmptyState
+            icon={Building2}
+            title="Property not found"
+            description="This property may have been removed, or the link is out of date."
+            action={
+              <Link href="/properties" className="inline-flex h-11 items-center gap-2 rounded-md border px-4 text-sm font-medium hover:bg-muted sm:h-10">
+                <ArrowLeft className="size-4" aria-hidden /> Back to properties
+              </Link>
+            }
+          />
+        </Card>
+      </AppLayout>
+    );
   }
 
   const propUnits = units.filter(u => u.propertyId === id);
@@ -56,159 +75,167 @@ export default function PropertyDetail() {
 
   const latestFinancials = propFinancials[propFinancials.length - 1];
 
+  const healthToneValue = healthTone(property.statusHealthScore);
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
-        
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/properties" className="hover:text-foreground flex items-center gap-1">
-            <ArrowLeft className="h-4 w-4" /> Properties
-          </Link>
-          <span>/</span>
-          <span className="text-foreground font-medium">{property.name}</span>
-        </div>
-
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{property.name}</h1>
-            <p className="text-muted-foreground mt-1">{property.address}, {property.city}, {property.state}</p>
-            <div className="flex flex-wrap gap-2 mt-4">
-              {property.fundingSources.map(f => (
-                <Badge key={f} variant="secondary">{f}</Badge>
-              ))}
-              <Badge variant="outline">Placed in Service: {property.placedInServiceDate}</Badge>
-              <Badge variant="outline">Compliance End: {property.compliancePeriodEndDate}</Badge>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-6 bg-card border rounded-lg p-4 shadow-sm">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Health Score</div>
-              <div className={cn(
-                "text-2xl font-bold",
-                property.statusHealthScore >= 90 ? "text-success" : 
-                property.statusHealthScore >= 80 ? "text-warning-foreground" : "text-destructive"
-              )}>
-                {property.statusHealthScore}/100
+        <PageHeader
+          eyebrow={
+            <nav aria-label="Breadcrumb" className="-ml-2 mb-1 flex items-center gap-1 text-sm text-muted-foreground">
+              <Link href="/properties" className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 hover:text-foreground sm:min-h-8">
+                <ArrowLeft className="size-4" aria-hidden /> Properties
+              </Link>
+              <ChevronRight className="size-4 shrink-0" aria-hidden />
+              <span className="truncate font-medium text-foreground" aria-current="page">{property.name}</span>
+            </nav>
+          }
+          title={property.name}
+          description={`${property.address}, ${property.city}, ${property.state}`}
+          actions={
+            <dl className="grid w-full grid-cols-2 divide-x rounded-lg border bg-card shadow-sm sm:w-auto">
+              <div className="px-4 py-3 sm:px-5">
+                <dt className="text-xs font-medium text-muted-foreground">Health Score</dt>
+                <dd className={cn("text-2xl font-semibold tabular-nums", toneText[healthToneValue])}>
+                  {property.statusHealthScore}<span className="text-base font-medium text-muted-foreground">/100</span>
+                </dd>
               </div>
-            </div>
-            <div className="h-10 w-px bg-border"></div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground">Occupancy</div>
-              <div className="text-2xl font-bold">{formatPercentage(property.currentOccupancyPct)}</div>
-            </div>
-          </div>
+              <div className="px-4 py-3 sm:px-5">
+                <dt className="text-xs font-medium text-muted-foreground">Occupancy</dt>
+                <dd className="text-2xl font-semibold tabular-nums">{formatPercentage(property.currentOccupancyPct)}</dd>
+              </div>
+            </dl>
+          }
+        />
+
+        <div className="-mt-2 flex flex-wrap gap-2">
+          {property.fundingSources.map(f => (
+            <Badge key={f} variant="secondary" className="rounded-md font-medium">{f}</Badge>
+          ))}
+          <Badge variant="outline" className="rounded-md font-medium text-muted-foreground">Placed in service <span className="ml-1 text-foreground tabular-nums">{property.placedInServiceDate}</span></Badge>
+          <Badge variant="outline" className="rounded-md font-medium text-muted-foreground">Compliance ends <span className="ml-1 text-foreground tabular-nums">{property.compliancePeriodEndDate}</span></Badge>
         </div>
 
-        <Tabs defaultValue="rent-roll" className="w-full mt-4">
-          <TabsList className="grid w-full grid-cols-4 max-w-[500px]">
-            <TabsTrigger value="rent-roll">Rent Roll</TabsTrigger>
-            <TabsTrigger value="financials">Financials</TabsTrigger>
-            <TabsTrigger value="compliance">Compliance</TabsTrigger>
-            <TabsTrigger value="occupancy">Occupancy</TabsTrigger>
+        <Tabs defaultValue="rent-roll" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="rent-roll" className="px-1 text-[13px] sm:px-3 sm:text-sm">Rent Roll</TabsTrigger>
+            <TabsTrigger value="financials" className="px-1 text-[13px] sm:px-3 sm:text-sm">Financials</TabsTrigger>
+            <TabsTrigger value="compliance" className="px-1 text-[13px] sm:px-3 sm:text-sm">Compliance</TabsTrigger>
+            <TabsTrigger value="occupancy" className="px-1 text-[13px] sm:px-3 sm:text-sm">Occupancy</TabsTrigger>
           </TabsList>
-          
+
           {/* RENT ROLL TAB */}
-          <TabsContent value="rent-roll" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
+          <TabsContent value="rent-roll" className="mt-4 sm:mt-6">
+            <Card className="min-w-0 overflow-hidden">
+              <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
                   <CardTitle>Unit Rent Roll</CardTitle>
-                  <CardDescription>All {property.totalUnits} units with compliance checks.</CardDescription>
+                  <CardDescription>All {property.totalUnits} units with rent-restriction checks. Rows over the AMI limit are flagged.</CardDescription>
+                  <p className="text-xs text-muted-foreground md:hidden">Swipe the table sideways to see rents →</p>
                 </div>
                 {overRentUnits.length > 0 && (
-                  <Badge variant="destructive" className="flex items-center gap-1 text-sm py-1">
-                    <AlertTriangle className="h-4 w-4" />
-                    {overRentUnits.length} Units Over Rent Limits
-                  </Badge>
+                  <StatusBadge tone="critical" dot={false} className="gap-1 self-start px-2.5 py-1">
+                    <AlertTriangle className="size-3.5" aria-hidden />
+                    {overRentUnits.length} {overRentUnits.length === 1 ? 'unit' : 'units'} over rent limit
+                  </StatusBadge>
                 )}
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-[600px] overflow-auto">
-                  <Table>
-                    <TableHeader className="bg-muted/50 sticky top-0 z-10 shadow-sm">
-                      <TableRow>
-                        <TableHead>Unit</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Tenant</TableHead>
-                        <TableHead className="text-right">Max Rent</TableHead>
-                        <TableHead className="text-right">Actual Rent</TableHead>
-                        <TableHead className="text-right">Variance</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {propUnits.map((u) => {
-                        const isOver = u.currentRent > u.maxAllowableRent;
-                        return (
-                          <TableRow key={u.id} className={isOver ? "bg-destructive/5 hover:bg-destructive/10" : ""}>
-                            <TableCell className="font-medium">
+              <DataSection
+                skeleton={<RowsSkeleton rows={8} />}
+                isEmpty={propUnits.length === 0}
+                empty={<EmptyState title="No units on the rent roll" description="Units appear here once the rent roll is imported." />}
+              >
+                <Table containerClassName="max-h-[600px] border-t" className="min-w-[640px]">
+                  <TableHeader className="sticky top-0 z-20 bg-muted shadow-[0_1px_0_hsl(var(--border))]">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="sticky left-0 z-10 bg-muted">Unit</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Tenant</TableHead>
+                      <TableHead className="text-right">Max Rent</TableHead>
+                      <TableHead className="text-right">Actual Rent</TableHead>
+                      <TableHead className="text-right">Variance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {propUnits.map((u) => {
+                      const isOver = u.currentRent > u.maxAllowableRent;
+                      const occ = occupancyStatus[u.occupancyStatus];
+                      return (
+                        <TableRow key={u.id} className={cn("group", isOver && "bg-destructive/5 hover:bg-destructive/10")}>
+                          <TableCell className={cn("sticky left-0 z-10 whitespace-nowrap font-medium tabular-nums", isOver ? "bg-[hsl(0_86%_97%)] group-hover:bg-[hsl(0_86%_95%)]" : "bg-card group-hover:bg-muted")}>
+                            <span className="inline-flex items-center gap-1.5">
                               {u.unitNumber}
-                              {isOver && <AlertCircle className="inline-block ml-2 h-4 w-4 text-destructive" />}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">{u.bedrooms}BR • {u.amiTier}% AMI</TableCell>
-                            <TableCell>
-                              {u.occupancyStatus === 'vacant' ? (
-                                <Badge variant="outline" className="text-muted-foreground">Vacant</Badge>
-                              ) : u.occupancyStatus === 'notice' ? (
-                                <Badge variant="warning" className="bg-warning/20">On Notice</Badge>
-                              ) : (
-                                <Badge variant="success" className="bg-success/10 text-success">Occupied</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{u.tenantName || '-'}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatCurrency(u.maxAllowableRent)}</TableCell>
-                            <TableCell className={cn("text-right tabular-nums font-medium", isOver && "text-destructive font-bold")}>
-                              {u.currentRent === 0 ? '-' : formatCurrency(u.currentRent)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {u.currentRent === 0 ? '-' : (
-                                <span className={isOver ? "text-destructive font-bold" : "text-muted-foreground"}>
-                                  {formatCurrency(u.currentRent - u.maxAllowableRent)}
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
+                              {isOver && <AlertCircle className="size-4 text-danger-text" aria-label="Over rent limit" />}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-muted-foreground">{u.bedrooms}BR · {u.amiTier}% AMI</TableCell>
+                          <TableCell><StatusBadge tone={occ.tone}>{occ.label}</StatusBadge></TableCell>
+                          <TableCell className="whitespace-nowrap">{u.tenantName || <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell className="text-right tabular-nums">{formatCurrency(u.maxAllowableRent)}</TableCell>
+                          <TableCell className={cn("text-right tabular-nums font-medium", isOver && "font-semibold text-danger-text")}>
+                            {u.currentRent === 0 ? <span className="font-normal text-muted-foreground">—</span> : formatCurrency(u.currentRent)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {u.currentRent === 0 ? <span className="text-muted-foreground">—</span> : (
+                              <span className={isOver ? "font-semibold text-danger-text" : "text-muted-foreground"}>
+                                {isOver ? '+' : ''}{formatCurrency(u.currentRent - u.maxAllowableRent)}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </DataSection>
             </Card>
           </TabsContent>
 
           {/* FINANCIALS TAB */}
-          <TabsContent value="financials" className="mt-6 space-y-6">
-            <Card>
+          <TabsContent value="financials" className="mt-4 space-y-6 sm:mt-6">
+            <Card className="min-w-0">
               <CardHeader>
-                <CardTitle>Net Operating Income (NOI) - 12 Months</CardTitle>
+                <CardTitle>Net Operating Income · 12 Months</CardTitle>
+                <CardDescription>Actual vs budget by month</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={financialData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis tickFormatter={(val) => `$${val/1000}k`} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                      <Tooltip formatter={(val: number) => formatCurrency(val)} />
-                      <Legend />
-                      <Line type="monotone" dataKey="actual" name="Actual NOI" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="budget" name="Budget NOI" stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <div className="h-64 w-full sm:h-72">
+                  <DataSection
+                    skeleton={<ChartSkeleton />}
+                    isEmpty={financialData.length === 0}
+                    empty={<EmptyState icon={LineChartIcon} title="No financials reported" description="Monthly operating statements haven't been submitted for this property." />}
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={financialData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="month" tickLine={false} axisLine={false} minTickGap={8} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                        <YAxis width={52} tickFormatter={(val) => `$${Math.round(val/1000)}k`} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                        <Tooltip formatter={(val: number) => formatCurrency(val)} labelFormatter={(m) => `Month ${m}`} contentStyle={{ borderRadius: '6px', border: '1px solid hsl(var(--border))', fontSize: 12 }} />
+                        <Legend verticalAlign="top" align="right" height={32} iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+                        <Line type="monotone" dataKey="actual" name="Actual NOI" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="budget" name="Budget NOI" stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </DataSection>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="min-w-0 overflow-hidden">
               <CardHeader>
-                <CardTitle>Latest Month Variance ({latestFinancials.month})</CardTitle>
+                <CardTitle>Latest Month Variance{latestFinancials ? ` (${latestFinancials.month})` : ''}</CardTitle>
+                <CardDescription>Red marks a variance that hurts NOI</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
+              <DataSection
+                skeleton={<RowsSkeleton rows={5} />}
+                isEmpty={!latestFinancials}
+                empty={<EmptyState title="No statement for the latest month" />}
+              >
+                {latestFinancials && (
+                <Table className="min-w-[480px]">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="hover:bg-transparent">
                       <TableHead>Line Item</TableHead>
                       <TableHead className="text-right">Actual</TableHead>
                       <TableHead className="text-right">Budget</TableHead>
@@ -227,10 +254,10 @@ export default function PropertyDetail() {
                       const isNegativeImpact = item.inverted ? variance > 0 : variance < 0;
                       return (
                         <TableRow key={item.key}>
-                          <TableCell className="font-medium">{item.label}</TableCell>
+                          <TableCell className="whitespace-nowrap font-medium">{item.label}</TableCell>
                           <TableCell className="text-right tabular-nums">{formatCurrency(item.data.actual)}</TableCell>
-                          <TableCell className="text-right tabular-nums">{formatCurrency(item.data.budget)}</TableCell>
-                          <TableCell className={cn("text-right tabular-nums", isNegativeImpact ? "text-destructive font-medium" : "text-success")}>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">{formatCurrency(item.data.budget)}</TableCell>
+                          <TableCell className={cn("text-right tabular-nums font-medium", isNegativeImpact ? toneText.critical : toneText.good)}>
                             {variance > 0 ? '+' : ''}{formatCurrency(variance)}
                           </TableCell>
                         </TableRow>
@@ -238,60 +265,63 @@ export default function PropertyDetail() {
                     })}
                   </TableBody>
                 </Table>
-              </CardContent>
+                )}
+              </DataSection>
             </Card>
           </TabsContent>
 
           {/* COMPLIANCE TAB */}
-          <TabsContent value="compliance" className="mt-6">
-            <Card>
+          <TabsContent value="compliance" className="mt-4 sm:mt-6">
+            <Card className="min-w-0">
               <CardHeader>
                 <CardTitle>Compliance Events</CardTitle>
                 <CardDescription>Upcoming deadlines and historical events for this property.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {propCompliance.map((e) => (
-                    <div key={e.id} className="flex items-start justify-between border-b pb-4 last:border-0 last:pb-0">
-                      <div className="flex gap-3">
-                        <div className="mt-0.5">
-                          {e.status === 'completed' ? <CheckCircle2 className="h-5 w-5 text-success" /> : 
-                           e.status === 'overdue' ? <AlertCircle className="h-5 w-5 text-destructive" /> :
-                           e.status === 'due-this-week' ? <AlertTriangle className="h-5 w-5 text-warning" /> :
-                           <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />}
+              <DataSection
+                skeleton={<RowsSkeleton rows={3} />}
+                isEmpty={propCompliance.length === 0}
+                empty={<EmptyState icon={CheckCircle2} title="No compliance events" description="Nothing is scheduled or on record for this property." />}
+              >
+                <ul className="divide-y border-t">
+                  {propCompliance.map((e) => {
+                    const st = complianceStatus[e.status];
+                    return (
+                      <li key={e.id} className="flex items-start gap-3 px-4 py-4 sm:px-6">
+                        <div className="mt-0.5 shrink-0">
+                          {e.status === 'completed' ? <CheckCircle2 className="size-5 text-success-text" aria-hidden /> :
+                           e.status === 'overdue' ? <AlertCircle className="size-5 text-danger-text" aria-hidden /> :
+                           e.status === 'due-this-week' ? <AlertTriangle className="size-5 text-warning-text" aria-hidden /> :
+                           <Clock className="size-5 text-info-text" aria-hidden />}
                         </div>
-                        <div>
-                          <div className="font-medium">{e.eventType}</div>
-                          <div className="text-sm text-muted-foreground mt-0.5">Due: {e.dueDate}</div>
+                        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="font-medium">{e.eventType}</p>
+                            <p className="text-sm text-muted-foreground">Due <span className="tabular-nums">{e.dueDate}</span></p>
+                          </div>
+                          <StatusBadge tone={st.tone} className="self-start sm:self-center">{st.label}</StatusBadge>
                         </div>
-                      </div>
-                      <div>
-                        {e.status === 'overdue' && <Badge variant="destructive">Overdue</Badge>}
-                        {e.status === 'due-this-week' && <Badge variant="warning">Due Soon</Badge>}
-                        {e.status === 'completed' && <Badge variant="outline" className="text-muted-foreground">Completed</Badge>}
-                        {e.status === 'upcoming' && <Badge variant="secondary">Upcoming</Badge>}
-                      </div>
-                    </div>
-                  ))}
-                  {propCompliance.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8">No compliance events found.</div>
-                  )}
-                </div>
-              </CardContent>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </DataSection>
             </Card>
           </TabsContent>
 
           {/* OCCUPANCY TAB */}
-          <TabsContent value="occupancy" className="mt-6">
-            <Card>
+          <TabsContent value="occupancy" className="mt-4 sm:mt-6">
+            <Card className="min-w-0">
               <CardHeader>
                 <CardTitle>Occupancy History</CardTitle>
                 <CardDescription>Last 12 months</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-muted-foreground text-center py-12 border-2 border-dashed rounded-lg bg-muted/10">
-                  Detailed occupancy history chart would render here. <br/>
-                  Current occupancy is {formatPercentage(property.currentOccupancyPct)}.
+                <div className="rounded-lg border border-dashed bg-muted/30">
+                  <EmptyState
+                    icon={LineChartIcon}
+                    title="Monthly history isn't tracked yet"
+                    description={<>Current occupancy is <span className="font-semibold text-foreground tabular-nums">{formatPercentage(property.currentOccupancyPct)}</span>. A month-by-month trend will appear once historical rent rolls are connected.</>}
+                  />
                 </div>
               </CardContent>
             </Card>
