@@ -6,9 +6,56 @@ How to explain, demo and defend Portfolio Pulse in an interview. Numbers below c
 
 ## 1. The 30-second pitch
 
-> "Portfolio Pulse is an asset-management dashboard for an **affordable housing portfolio**: 18 LIHTC and HUD-funded properties, 2,184 units. It answers three questions in order: *How is the portfolio doing? What explains it? What should someone fix next?*
+> "Portfolio Pulse is a case study I built to show how AI-assisted development can automate the tracking work asset managers do by hand. It models an **affordable housing portfolio** — 18 LIHTC and HUD-funded properties, 2,184 units — and runs 23 automated checks across the rent roll, financials and compliance calendar. Instead of someone scanning spreadsheets, it surfaces a ranked action queue: rent-limit violations, overdue certifications, NOI misses and data conflicts, each with a reason and a next step.
 >
-> What makes it different is that it's honest about its data. It keeps the physical units in the rent roll separate from marketing listings, scores how trustworthy each record is, and shows N/A instead of guessing when data is missing. Every number has a definition one tap away."
+> It's also honest about its data: it shows N/A instead of guessing, and every number has its definition one tap away."
+
+## 1b. "Why did you build this?" and "How does it help asset managers?"
+
+**Get the framing right.** The dashboard doesn't call an AI model at runtime. AI was the *build tool*; the product is *automated, rules-based tracking*. Say "I used AI-assisted development to build an automated tracking workflow", never "it's an AI-powered dashboard". If asked "where's the AI?", that's your strongest answer, not a weakness (see below).
+
+### "Why did you build this?" (about 45 seconds)
+
+> "I wanted to show, not just say, that I can take a manual, spreadsheet-heavy workflow and turn it into an automated one using AI tools. I picked affordable housing asset management because the tracking burden is real: every unit has an AMI rent limit, every property has a compliance calendar, and investors expect clean quarterly reports. Most of that is still checked by hand across rent rolls, budgets and calendars.
+>
+> So I built a case study end to end. I defined the problem and the rules, used an AI coding assistant to build it quickly, and spent my effort on the parts that need judgment: which checks matter, how to rank them, and how to handle bad or missing data without fabricating numbers. The result is a working product, with tests, that I can walk you through."
+
+*Personalize the first line with your own background, e.g. "Coming from [property management / analytics / finance], I kept seeing…"*
+
+### "How does this help an asset manager?" (about 60 seconds)
+
+> "It replaces manual checking with automated tracking, and it tells you what to do first. Five concrete examples:"
+
+| Manual work today | What the dashboard automates | Example from the data |
+|---|---|---|
+| Scanning the rent roll for rents above the AMI limit | Checks all 2,184 units on every load and flags overcharges as High severity | 3 overcharges, all at Riverside Commons |
+| Watching the compliance calendar for income certifications and inspections | Sorts events into overdue / due this week / upcoming and queues the overdue ones | 4 overdue, including 2 tenant income certifications |
+| Checking that the occupancy sent to investors matches the rent roll | Recomputes occupancy from the rent roll and flags gaps over 2 pts | 7 properties disagree; Maple Grove is off by 4.8 pts |
+| Finding stale or broken records before they reach a report | 15 record checks plus a confidence tier on every unit | 367 expired leases still marked occupied; 4 impossible lease dates |
+| Building investor reports and variance explanations | One-click PDF investor report; NOI misses over 5% are queued automatically | 6 properties missed NOI budget by more than 5% |
+
+> "Everything lands in one Action Queue — 514 items ranked High, Medium, Low, each with a plain-English reason and a suggested action — and it exports to CSV so it can be handed to a property manager. The point is that the asset manager spends their time deciding, not hunting."
+
+**Don't invent time savings.** If asked "how much time does it save?", answer: "I didn't measure that on real users. What I can say is it checks every unit and every deadline on every load instead of sampling, and it ranks the results. In a real pilot I'd measure hours spent on monthly compliance review before and after."
+
+### "Where's the AI?" / "What did you do versus the AI?"
+
+> "The AI was how I built it, and that's the skill I'm demonstrating: I used an AI coding assistant to go from idea to a tested, working product quickly. My job was the parts AI can't own: picking the problem, defining the 23 rules and their severities from how affordable housing compliance actually works, deciding to show N/A rather than fake listing data, reviewing what was generated, and catching issues — for example the NOI formula subtracting vacancy loss twice. I also kept the logic as plain, tested rules on purpose: for compliance, an asset manager needs to know exactly why something was flagged."
+
+**Be ready to walk through it.** Know where things live: rules in `src/lib/analytics/exceptions.ts`, record checks and confidence tiers in `src/lib/analytics/inventory.ts`, definitions in `src/lib/analytics/definitions.ts`, and tests in `src/lib/analytics/__tests__/`.
+
+### "Where would you add AI next?"
+
+These are natural next steps. Present them as plans, not features that exist today.
+1. **Draft variance commentary for investor reports:** an LLM writes the "why NOI missed budget" paragraph from the numbers the dashboard already computed, and a person approves it.
+2. **Read documents into the tracker:** extract income and household data from tenant income certification PDFs and flag mismatches against the rent roll.
+3. **Listing-to-unit matching:** use AI-assisted entity resolution for the listing feed. The match-confidence tiers and the review queue for low-confidence matches are already designed for it.
+4. **Ask the queue questions:** "Which properties have overdue certifications and an NOI miss?", answered from the exception data, with links to the records.
+
+> Principle to state: "AI drafts and suggests; the rules and a person decide. Compliance flags have to be explainable."
+
+### One-liner (for "tell me about a project")
+> "I used AI-assisted development to build an affordable-housing asset-management dashboard that automates compliance and performance tracking — 23 checks across 2,184 units that turn spreadsheets into a ranked action queue."
 
 ## 2. Who it's for and what problem it solves
 
