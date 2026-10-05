@@ -18,6 +18,12 @@ import PropertyDetail from '@/pages/property-detail';
 import ComplianceTracker from '@/pages/compliance';
 import InvestorsList from '@/pages/investors';
 import Alerts from '@/pages/alerts';
+import DataTrust from '@/pages/data-trust';
+import Activity from '@/pages/activity';
+import Diagnosis from '@/pages/diagnosis';
+import ActionQueue from '@/pages/action-queue';
+import Methodology from '@/pages/methodology';
+import { FiltersProvider } from '@/lib/analytics/use-analytics';
 
 const queryClient = new QueryClient();
 
@@ -31,6 +37,11 @@ function Router() {
         <Route path="/compliance" component={ComplianceTracker} />
         <Route path="/investors" component={InvestorsList} />
         <Route path="/alerts" component={Alerts} />
+        <Route path="/data-trust" component={DataTrust} />
+        <Route path="/activity" component={Activity} />
+        <Route path="/diagnosis" component={Diagnosis} />
+        <Route path="/actions" component={ActionQueue} />
+        <Route path="/methodology" component={Methodology} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
@@ -46,12 +57,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <DataStateProvider>
+        <FiltersProvider>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <Router />
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
+        </FiltersProvider>
       </DataStateProvider>
     </QueryClientProvider>
   );

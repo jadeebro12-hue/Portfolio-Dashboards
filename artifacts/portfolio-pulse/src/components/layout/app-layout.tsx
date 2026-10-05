@@ -43,7 +43,23 @@ function MobileTopBar() {
   )
 }
 
+/** Scroll to a #hash target after client-side navigation; otherwise start at the top. */
+function useScrollOnNavigate() {
+  const [location] = useLocation()
+  React.useEffect(() => {
+    const id = window.location.hash.slice(1)
+    if (!id) {
+      window.scrollTo(0, 0)
+      return
+    }
+    // Wait a frame so the new page has rendered its sections.
+    const raf = requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: "start" }))
+    return () => cancelAnimationFrame(raf)
+  }, [location])
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  useScrollOnNavigate()
   return (
     <div className="flex min-h-dvh w-full bg-background">
       <Sidebar />

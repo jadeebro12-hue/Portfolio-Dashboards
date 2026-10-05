@@ -6,9 +6,15 @@ import {
   ShieldAlert,
   UsersRound,
   AlertTriangle,
+  DatabaseZap,
+  Activity,
+  Stethoscope,
+  ListChecks,
+  BookOpen,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { getPortfolioModel } from "@/lib/analytics/model"
 import { dataModeLabels, useDataState, type DataMode } from "@/lib/data-state"
 import {
   getNegativeNOIProperties,
@@ -22,17 +28,41 @@ interface NavItem {
   href: string
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { icon: LayoutDashboard, label: "Overview", href: "/" },
-  { icon: Building2, label: "Properties", href: "/properties" },
-  { icon: ShieldAlert, label: "Compliance", href: "/compliance" },
-  { icon: UsersRound, label: "Investors", href: "/investors" },
-  { icon: AlertTriangle, label: "Alerts", href: "/alerts" },
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Analyze",
+    items: [
+      { icon: LayoutDashboard, label: "Portfolio Health", href: "/" },
+      { icon: DatabaseZap, label: "Inventory & Data Trust", href: "/data-trust" },
+      { icon: Activity, label: "Leasing & Listings", href: "/activity" },
+      { icon: Stethoscope, label: "Property Diagnosis", href: "/diagnosis" },
+      { icon: ListChecks, label: "Action Queue", href: "/actions" },
+    ],
+  },
+  {
+    label: "Operate",
+    items: [
+      { icon: Building2, label: "Properties", href: "/properties" },
+      { icon: ShieldAlert, label: "Compliance", href: "/compliance" },
+      { icon: UsersRound, label: "Investors", href: "/investors" },
+      { icon: AlertTriangle, label: "Alerts", href: "/alerts" },
+    ],
+  },
+  {
+    label: "Reference",
+    items: [{ icon: BookOpen, label: "Definitions & Methodology", href: "/methodology" }],
+  },
 ]
 
 // Same sum the Alerts page shows as "items requiring intervention".
 const ALERT_COUNT =
   getOverRentUnits().length + getOverdueCompliance().length + getNegativeNOIProperties().length
+
+const HIGH_SEVERITY_COUNT = getPortfolioModel().exceptions.filter((e) => e.severity === "high").length
+const BADGES: Record<string, { count: number; label: string }> = {
+  "/alerts": { count: ALERT_COUNT, label: "alerts" },
+  "/actions": { count: HIGH_SEVERITY_COUNT, label: "high-severity exceptions" },
+}
 
 export function BrandMark({ className }: { className?: string }) {
   return (
@@ -45,7 +75,7 @@ export function BrandMark({ className }: { className?: string }) {
   )
 }
 
-function SidebarItem({ icon: Icon, label, href, badge }: NavItem & { badge?: number }) {
+function SidebarItem({ icon: Icon, label, href, badge }: NavItem & { badge?: { count: number; label: string } }) {
   const [location] = useLocation()
   const isActive = location === href || (href !== "/" && location.startsWith(href))
 
@@ -54,7 +84,7 @@ function SidebarItem({ icon: Icon, label, href, badge }: NavItem & { badge?: num
       href={href}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors lg:h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
         isActive
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
@@ -62,12 +92,12 @@ function SidebarItem({ icon: Icon, label, href, badge }: NavItem & { badge?: num
     >
       <Icon className="size-5 shrink-0" aria-hidden />
       <span className="flex-1">{label}</span>
-      {badge ? (
+      {badge && badge.count > 0 ? (
         <span
           className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold tabular-nums text-white"
-          aria-label={`${badge} alerts`}
+          aria-label={`${badge.count} ${badge.label}`}
         >
-          {badge}
+          {badge.count}
         </span>
       ) : null}
     </Link>
@@ -94,26 +124,42 @@ function DataModeControl() {
   )
 }
 
+/** Data date + load time. The data is a mock snapshot; nothing here is real-time. */
+export function DataAsOf({ className }: { className?: string }) {
+  const { asOf, loadedAt } = getPortfolioModel()
+  return (
+    <p className={cn("text-xs leading-relaxed text-sidebar-foreground/70", className)}>
+      Data as of {asOf.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+      <br />
+      Last refreshed {loadedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} (app load)
+      <br />
+      Demo snapshot · all data is mocked
+    </p>
+  )
+}
+
 /** Nav list + footer, shared by the desktop sidebar and the mobile drawer. */
 export function SidebarNav() {
   const { status } = useDataState()
   return (
     <div className="flex h-full flex-col">
-      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="grid gap-1">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.href}>
-              <SidebarItem
-                {...item}
-                badge={item.href === "/alerts" && status === "ready" ? ALERT_COUNT : undefined}
-              />
-            </li>
-          ))}
-        </ul>
+      <nav aria-label="Main" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">{group.label}</p>
+            <ul className="grid gap-0.5">
+              {group.items.map((item) => (
+                <li key={item.href}>
+                  <SidebarItem {...item} badge={status === "ready" ? BADGES[item.href] : undefined} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </nav>
       <div className="space-y-3 border-t border-sidebar-border p-4">
         <DataModeControl />
-        <p className="text-xs text-sidebar-foreground/70">Demo environment. All data is mocked.</p>
+        <DataAsOf />
       </div>
     </div>
   )

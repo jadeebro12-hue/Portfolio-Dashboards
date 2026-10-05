@@ -1,6 +1,5 @@
 import { AppLayout } from "@/components/layout/app-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -9,186 +8,231 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { 
-  properties, 
-  units, 
-  financials, 
-  complianceEvents,
+import {
+  properties,
+  financials,
   getOverRentUnits,
   getOverdueCompliance,
-  getDueThisWeekCompliance,
-  getNegativeNOIProperties
 } from "@/lib/mock-data"
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils"
 import { format, subMonths } from "date-fns"
 import { Link } from "wouter"
-import { Building2, AlertCircle, ShieldAlert, ArrowUpRight, ArrowDownRight, TrendingUp, ChevronRight, CheckCircle2 } from "lucide-react"
+import { Building2, AlertCircle, ArrowUpRight, ArrowDownRight, ChevronRight, CheckCircle2, Home, DoorOpen, Megaphone, ShieldCheck, DatabaseZap, Stethoscope, ListChecks } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { KpiCard } from "@/components/kpi-card"
 import { StatusBadge, ScoreChip } from "@/components/status-badge"
 import { DataSection, ChartSkeleton, RowsSkeleton, EmptyState } from "@/components/data-states"
+import { MetricInfo, SourceTag } from "@/components/analytics/metric-info"
 import { healthTone, occupancyTone, toneFill } from "@/lib/status"
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { getPortfolioModel } from "@/lib/analytics/model"
+import { useDataState } from "@/lib/data-state"
+import { formatMonthKey } from "@/lib/analytics/dates"
+import { formatCount, formatPct, safeDivide } from "@/lib/analytics/format"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  ReferenceLine
+  Legend,
 } from "recharts"
 
 export default function Overview() {
-  const totalUnits = properties.reduce((acc, p) => acc + p.totalUnits, 0);
-  const occupiedUnits = units.filter(u => u.occupancyStatus !== 'vacant').length;
-  const portfolioOccupancy = occupiedUnits / totalUnits;
-  
+  const model = getPortfolioModel()
+  const { funnel, confidence, reconciliations } = model
+  const ready = useDataState().status === "ready"
+
   const overdueItems = getOverdueCompliance();
-  const dueThisWeekItems = getDueThisWeekCompliance();
   const overRentUnits = getOverRentUnits();
-  const negativeNOI = getNegativeNOIProperties();
-  
+
   const lastMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
   const lastMonthFinancials = financials.filter(f => f.month === lastMonth);
-  
+
   const totalNOIActual = lastMonthFinancials.reduce((acc, f) => acc + (f.rentalIncome.actual + f.otherIncome.actual - f.vacancyLoss.actual - f.operatingExpenses.actual), 0);
   const totalNOIBudget = lastMonthFinancials.reduce((acc, f) => acc + (f.rentalIncome.budget + f.otherIncome.budget - f.vacancyLoss.budget - f.operatingExpenses.budget), 0);
   const noiVariance = totalNOIActual - totalNOIBudget;
 
-  // Occupancy trend data (last 12 months)
-  const occupancyTrend = Array.from({ length: 12 }).map((_, i) => {
-    const d = subMonths(new Date(), 11 - i);
-    return {
-      month: format(d, 'MMM yyyy'),
-      occupancy: 0.92 + (Math.sin(i) * 0.02) + (i * 0.003) // Mock trend
-    };
-  });
+  // Economic occupancy from financials (replaces a synthetic trend line).
+  const econ = model.economicOccupancy.filter((p) => p.economicOccupancy != null)
+  const econValues = econ.map((p) => p.economicOccupancy as number)
+  const econMin = econValues.length ? Math.min(...econValues) : null
+  const econMax = econValues.length ? Math.max(...econValues) : null
+  const latestEcon = econ.at(-1)
+  const priorEcon = econ.at(-2)
+  const econDelta = latestEcon?.economicOccupancy != null && priorEcon?.economicOccupancy != null ? latestEcon.economicOccupancy - priorEcon.economicOccupancy : null
 
-  // NOI Variance by property
-  const noiChartData = lastMonthFinancials.map(f => {
-    const actual = f.rentalIncome.actual + f.otherIncome.actual - f.vacancyLoss.actual - f.operatingExpenses.actual;
-    const budget = f.rentalIncome.budget + f.otherIncome.budget - f.vacancyLoss.budget - f.operatingExpenses.budget;
-    return {
-      name: properties.find(p => p.id === f.propertyId)?.name || '',
-      actual,
-      budget,
-      variance: actual - budget
-    };
-  }).sort((a, b) => a.variance - b.variance).slice(0, 8); // Top 8 largest variances
+  const propertiesWithUnits = reconciliations.filter((r) => r.rentRollUnits > 0).length
+  const unitCountMatches = reconciliations.filter((r) => r.unitCountMatches).length
+  const occupancyGaps = reconciliations.filter((r) => r.occupancyGapFlag).length
+  const highShare = safeDivide(confidence.high, funnel.total)
+  const belowHigh = funnel.total - confidence.high
+  const highSeverity = model.exceptions.filter((e) => e.severity === "high").length
 
   const attentionCount = Math.min(overRentUnits.length, 3) + Math.min(overdueItems.length, 3);
+
+  const nextSteps = [
+    {
+      href: "/data-trust",
+      icon: DatabaseZap,
+      title: "Check data trust",
+      stat: `${formatCount(belowHigh)} records below High · ${occupancyGaps} occupancy gaps`,
+      detail: "Record confidence, listing coverage and reported-vs-rent-roll reconciliation.",
+    },
+    {
+      href: "/diagnosis",
+      icon: Stethoscope,
+      title: "Diagnose properties",
+      stat: `${funnel.vacant} vacant · ${funnel.notice} on notice`,
+      detail: "Compare occupancy, rent-to-limit and exceptions by property and unit type.",
+    },
+    {
+      href: "/actions",
+      icon: ListChecks,
+      title: "Work the Action Queue",
+      stat: `${highSeverity} high-severity exceptions`,
+      detail: "Rent-limit violations, overdue compliance and record conflicts, ranked by severity.",
+    },
+  ]
 
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Portfolio Overview"
-          description={`At-a-glance metrics across ${properties.length} properties.`}
+          title="Portfolio Health"
+          description={`What's happening across ${properties.length} affordable housing properties.`}
+          actions={
+            <p className="text-xs text-muted-foreground sm:text-right">
+              Data as of <span className="font-medium text-foreground">{model.asOf.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> · </span>
+              Last refreshed {model.loadedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} (app load, not real-time)
+            </p>
+          }
         />
 
-        {/* Summary Cards */}
-        <section aria-label="Key metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Executive KPIs: inventory first, then listings + trust, then financials */}
+        <section aria-label="Key metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-12 [&>*]:xl:col-span-3 [&>*:nth-child(n+5)]:xl:col-span-4">
           <KpiCard
-            label="Total Units"
+            label="Properties"
+            metric="totalProperties"
             icon={Building2}
-            value={totalUnits.toLocaleString()}
-            detail={<>{occupiedUnits.toLocaleString()} occupied · {totalUnits - occupiedUnits} vacant</>}
+            value={formatCount(properties.length)}
+            detail={`Across ${new Set(properties.map((p) => p.state)).size} states`}
+            footer={`${propertiesWithUnits} of ${properties.length} have rent-roll records`}
           />
           <KpiCard
-            label="Portfolio Occupancy"
-            icon={TrendingUp}
-            value={formatPercentage(portfolioOccupancy)}
-            detail={
-              <span className="flex items-center gap-1">
-                <ArrowUpRight className="size-3.5 text-success-text" aria-hidden />
-                <span className="font-medium text-success-text">1.2%</span> from last month
-              </span>
-            }
+            label="Physical units"
+            metric="physicalUnits"
+            icon={Home}
+            value={formatCount(funnel.total)}
+            detail="One record per apartment"
+            footer={`Rent roll matches declared unit count at ${unitCountMatches} of ${reconciliations.length} properties`}
           />
           <KpiCard
-            label="NOI Variance · Last Month"
+            label="Physical occupancy"
+            metric="physicalOccupancy"
+            value={formatPct(funnel.physicalOccupancy)}
+            detail={`${formatCount(funnel.occupied + funnel.notice)} occupied, incl. ${funnel.notice} on notice`}
+            footer="No status history, so no period comparison"
+          />
+          <KpiCard
+            label="Vacant units"
+            metric="vacantUnits"
+            icon={DoorOpen}
+            value={formatCount(funnel.vacant)}
+            detail={`${formatPct(safeDivide(funnel.vacant, funnel.total))} of units · ${funnel.notice} more on notice`}
+            footer={`Status coverage ${formatPct(funnel.statusCoverage, 0)}${funnel.unclassified ? ` · ${funnel.unclassified} unclassified` : ""}`}
+          />
+          <KpiCard
+            label="Active listings"
+            metric="activeListings"
+            icon={Megaphone}
+            value={null}
+            unavailable="No listing feed connected"
+            footer={<>New listings in period: N/A · <Link href="/methodology#required-fields" className="font-medium text-primary hover:underline max-sm:py-[15px]">fields needed</Link></>}
+          />
+          <KpiCard
+            label="Record confidence"
+            metric="recordConfidence"
+            icon={ShieldCheck}
+            value={<>{formatPct(highShare, 0)} <span className="text-base font-medium text-muted-foreground">High</span></>}
+            detail={`${formatCount(confidence.medium)} medium · ${formatCount(confidence.low)} low · ${formatCount(confidence.unresolved)} unresolved`}
+            footer="Listing → unit mapping coverage: N/A"
+          />
+          <KpiCard
+            label="NOI vs budget · last month"
+            metric="noiVariance"
             icon={noiVariance < 0 ? ArrowDownRight : ArrowUpRight}
             tone={noiVariance < 0 ? "critical" : "good"}
             value={<>{noiVariance > 0 ? '+' : ''}{formatCurrency(noiVariance)}</>}
             detail={<>{formatCurrency(totalNOIActual)} actual vs {formatCurrency(totalNOIBudget)} budget</>}
-          />
-          <KpiCard
-            label="Compliance Due"
-            icon={ShieldAlert}
-            emphasis="warning"
-            value={overdueItems.length + dueThisWeekItems.length}
-            detail={
-              <span className="flex flex-wrap items-center gap-1.5">
-                {overdueItems.length > 0 && (
-                  <StatusBadge tone="critical">{overdueItems.length} overdue</StatusBadge>
-                )}
-                {dueThisWeekItems.length > 0 && (
-                  <StatusBadge tone="warning">{dueThisWeekItems.length} due this week</StatusBadge>
-                )}
-              </span>
-            }
+            footer={<><Link href="/data-trust#field-semantics" className="font-medium text-primary hover:underline max-sm:py-[15px]">Field-semantics note</Link> on vacancy loss</>}
+            className="sm:col-span-2"
           />
         </section>
 
-        {/* Charts & Attention Needed */}
+        {/* Economic occupancy + attention */}
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <Card className="min-w-0 xl:col-span-2">
             <CardHeader>
-              <CardTitle>Occupancy Trend</CardTitle>
-              <CardDescription>Trailing 12-month portfolio average · dashed line marks the 95% target</CardDescription>
+              <div className="flex flex-wrap items-center gap-2">
+                <SourceTag kind="financials" />
+                <MetricInfo metric="economicOccupancy" />
+              </div>
+              <CardTitle className="pt-1">
+                {econMin != null && econMax != null
+                  ? `Economic occupancy held between ${formatPct(econMin)} and ${formatPct(econMax)} over 12 months`
+                  : "Economic occupancy"}
+              </CardTitle>
+              <CardDescription>
+                Rent earned ÷ gross potential rent, by month.
+                {econDelta != null && <> Latest month {formatPct(latestEcon?.economicOccupancy)} ({econDelta >= 0 ? "+" : "−"}{Math.abs(econDelta * 100).toFixed(1)} pts vs prior month).</>}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-56 w-full sm:h-64">
                 <DataSection
                   skeleton={<ChartSkeleton />}
-                  empty={<EmptyState title="No occupancy history yet" description="Trend data appears after the first full month of rent rolls." />}
+                  isEmpty={econ.length === 0}
+                  empty={<EmptyState title="No financial history yet" description="Economic occupancy appears once monthly statements are loaded." />}
                 >
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={occupancyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorOcc" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25}/>
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
+                    <LineChart data={econ} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} accessibilityLayer>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                       <XAxis
                         dataKey="month"
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(val: string) => val.slice(0, 3)}
+                        tickFormatter={(m: string) => formatMonthKey(m, true)}
                         minTickGap={16}
                         tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                         dy={8}
                       />
                       <YAxis
-                        domain={[0.85, 1]}
-                        tickFormatter={(val) => `${(val * 100).toFixed(0)}%`}
+                        domain={[0.9, 1]}
+                        tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
                         tickLine={false}
                         axisLine={false}
                         width={44}
                         tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                       />
                       <Tooltip
-                        formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'Occupancy']}
-                        contentStyle={{ borderRadius: '6px', border: '1px solid hsl(var(--border))', fontSize: 12 }}
+                        labelFormatter={(m) => formatMonthKey(String(m))}
+                        formatter={(v: number, name) => [formatPct(v), name]}
+                        contentStyle={{ borderRadius: 6, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                       />
-                      <ReferenceLine y={0.95} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
-                      <Area
-                        type="monotone"
-                        dataKey="occupancy"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#colorOcc)"
-                      />
-                    </AreaChart>
+                      <Legend verticalAlign="top" align="right" height={28} iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="economicOccupancy" name="Actual" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="budgetEconomicOccupancy" name="Budget" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
+                    </LineChart>
                   </ResponsiveContainer>
                 </DataSection>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Physical occupancy ({formatPct(funnel.physicalOccupancy)}) is a single rent-roll snapshot, so it can't be trended. Economic occupancy assumes rental income is net of vacancy; that assumption reconciles to rent-roll gross potential rent for {formatPct(model.gpr.matchRate, 0)} of property-months.
+              </p>
             </CardContent>
           </Card>
 
@@ -199,7 +243,7 @@ export default function Overview() {
                 <CardTitle>Attention Needed</CardTitle>
               </div>
             </CardHeader>
-            <div className="flex-1 overflow-y-auto xl:max-h-[300px]">
+            <div className="flex-1 overflow-y-auto xl:max-h-[340px]">
               <DataSection
                 skeleton={<RowsSkeleton rows={3} />}
                 isEmpty={attentionCount === 0}
@@ -250,23 +294,48 @@ export default function Overview() {
                 </ul>
               </DataSection>
             </div>
-            <div className="border-t">
-              <Link href="/alerts" className="flex min-h-11 items-center justify-center gap-1 px-4 text-sm font-medium text-primary hover:bg-muted/60 hover:underline">
-                View all alerts <ChevronRight className="size-4" aria-hidden />
+            <div className="grid grid-cols-2 divide-x border-t">
+              <Link href="/alerts" className="flex min-h-11 items-center justify-center gap-1 px-3 text-sm font-medium text-primary hover:bg-muted/60 hover:underline">
+                All alerts <ChevronRight className="size-4" aria-hidden />
+              </Link>
+              <Link href="/actions" className="flex min-h-11 items-center justify-center gap-1 px-3 text-sm font-medium text-primary hover:bg-muted/60 hover:underline">
+                Action Queue <ChevronRight className="size-4" aria-hidden />
               </Link>
             </div>
           </Card>
         </div>
 
+        {/* Guided path: overview → diagnosis → action */}
+        <section aria-labelledby="next-steps" className="space-y-3">
+          <h2 id="next-steps" className="text-base font-semibold">Where to look next</h2>
+          <ol className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {nextSteps.map((s, i) => (
+              <li key={s.href}>
+                <Link href={s.href} className="group flex h-full flex-col gap-2 rounded-lg border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 sm:p-5">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground tabular-nums">{i + 1}</span>
+                    <s.icon className="size-4 text-muted-foreground" aria-hidden />
+                    {s.title}
+                    <ChevronRight className="ml-auto size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+                  </span>
+                  {ready && <span className="text-sm font-medium tabular-nums">{s.stat}</span>}
+                  <span className="text-xs text-muted-foreground">{s.detail}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         {/* Property Health Grid (List view simplified for dashboard) */}
         <Card className="min-w-0">
           <CardHeader className="flex-row items-start justify-between gap-4">
             <div className="space-y-1">
-              <CardTitle>Property Health Overview</CardTitle>
-              <CardDescription>Quick status check across the portfolio</CardDescription>
+              <div className="flex flex-wrap gap-2"><SourceTag kind="property" /></div>
+              <CardTitle className="pt-1">Property Health Overview</CardTitle>
+              <CardDescription>Reported occupancy and the source-provided health score</CardDescription>
             </div>
-            <Link href="/properties" className="-my-2 flex min-h-11 shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline">
-              View all <ChevronRight className="size-4" aria-hidden />
+            <Link href="/diagnosis" className="-my-2 flex min-h-11 shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline">
+              Diagnose <ChevronRight className="size-4" aria-hidden />
             </Link>
           </CardHeader>
           <DataSection
@@ -280,7 +349,7 @@ export default function Overview() {
                   <Link href={`/properties/${property.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/60">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{property.name}</p>
-                      <p className="text-xs text-muted-foreground">{property.city}, {property.state} · {formatPercentage(property.currentOccupancyPct)} occupied</p>
+                      <p className="text-xs text-muted-foreground">{property.city}, {property.state} · {formatPercentage(property.currentOccupancyPct)} reported</p>
                     </div>
                     <ScoreChip score={property.statusHealthScore} tone={healthTone(property.statusHealthScore)} />
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -294,8 +363,8 @@ export default function Overview() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Property</TableHead>
-                    <TableHead className="text-right">Occupancy</TableHead>
-                    <TableHead className="text-right">Health Score</TableHead>
+                    <TableHead className="text-right"><span className="inline-flex items-center gap-1.5">Reported occupancy <MetricInfo metric="reportedOccupancy" /></span></TableHead>
+                    <TableHead className="text-right"><span className="inline-flex items-center gap-1.5">Health score <MetricInfo metric="healthScore" /></span></TableHead>
                     <TableHead className="text-right"><span className="sr-only">Action</span></TableHead>
                   </TableRow>
                 </TableHeader>
