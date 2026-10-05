@@ -16,8 +16,6 @@ Three polished React dashboard applications built as portfolio case studies acro
 |---|---|---|
 | ![Inventory & Data Trust: physical units vs listing activity](screenshots/portfolio-pulse-data-trust.jpg) | ![Action Queue: ranked exceptions with reasons and suggested actions](screenshots/portfolio-pulse-action-queue.jpg) | ![Portfolio Health on a phone](screenshots/portfolio-pulse-mobile.jpg) |
 
-> **Presenting this in an interview?** See the [Portfolio Pulse interview guide](artifacts/portfolio-pulse/INTERVIEW_GUIDE.md): 30-second pitch, affordable-housing primer, numbers cheat sheet, page tour, a 2-minute demo script and likely questions.
-
 **At a glance:** 18 LIHTC / HUD properties · 2,184 units · 94.7% physical occupancy · 3 AMI rent-limit violations · 4 overdue compliance events · 6 investor reporting relationships · 514 prioritized exceptions.
 
 ### Affordable housing domain
