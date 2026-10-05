@@ -12,6 +12,23 @@ Three polished React dashboard applications built as portfolio case studies acro
 
 ![Portfolio Pulse Dashboard](screenshots/portfolio-pulse.jpg)
 
+> **Presenting this in an interview?** See the [Portfolio Pulse interview guide](artifacts/portfolio-pulse/INTERVIEW_GUIDE.md): 30-second pitch, affordable-housing primer, numbers cheat sheet, page tour, a 2-minute demo script and likely questions.
+
+**At a glance:** 18 LIHTC / HUD properties · 2,184 units · 94.7% physical occupancy · 3 AMI rent-limit violations · 4 overdue compliance events · 6 investor reporting relationships · 514 prioritized exceptions.
+
+### Affordable housing domain
+
+The original affordable-housing asset-management tools are all still here; the analytics layer is built on top of them.
+
+- **AMI rent restrictions:** every unit carries an AMI tier (30 / 40 / 50 / 60%) and a maximum allowable rent. Units charging above the limit are flagged as rent-restriction violations (3 in the portfolio, all at Riverside Commons) — reportable LIHTC noncompliance.
+- **Set-asides and funding layers:** properties carry their AMI set-asides and funding sources (9% LIHTC, 4% LIHTC + tax-exempt bonds, HOME, HUD Section 8, State Trust Fund). Units whose AMI tier isn't one of the property's set-asides are flagged.
+- **Compliance calendar:** tenant income certifications and annual recertifications, HUD REAC and physical inspections, state agency monitoring, owner certifications and utility-allowance updates, grouped as overdue / due this week / upcoming.
+- **Compliance period tracking:** properties past the 15-year federal compliance period are flagged to confirm extended-use monitoring and investor exit plans (3 properties).
+- **Investor reporting:** reporting schedules for LIHTC syndicators, lenders, HUD and the state housing finance agency, with a one-page **PDF investor report** per relationship.
+- **Financial performance:** NOI vs budget by property, line-item variance, physical vs economic occupancy, and in-place rent vs AMI limit (rent-to-limit).
+
+Rent limits in the demo data are illustrative, not actual HUD-published limits for a specific county.
+
 ### Why this dashboard exists
 
 Portfolio Pulse helps affordable multifamily operators move from high-level portfolio metrics to the records that explain them. It separates stable physical-unit inventory from changing listing activity, surfaces data coverage and uncertainty, and prioritizes exceptions that require operational or data-quality follow-up.
@@ -53,7 +70,7 @@ It answers three increasingly specific questions:
 
 **Findings the data-trust checks surfaced in the dataset:** 4 leases end before they start; 367 occupied units have an expired lease end date; 7 properties report occupancy more than 2 pts away from their rent roll; and rental income reconciles to gross potential rent *net* of vacancy for 100% of property-months, which means the existing NOI formula likely double-counts vacancy loss. The NOI calculation is left unchanged pending confirmation of the field's meaning.
 
-**Also included:** fully responsive layouts from 390px to 1440px with 44px touch targets, one status color system with AA contrast, and loading / empty / error states on every data view (use **Demo data state** in the sidebar or `?state=loading|empty|error`). Investor reporting with **PDF export**, AMI rent-limit enforcement and the LIHTC compliance calendar are unchanged.
+**Also included:** fully responsive layouts from 390px to 1440px with 44px touch targets, one status color system with AA contrast, and loading / empty / error states on every data view (use **Demo data state** in the sidebar or `?state=loading|empty|error`).
 
 **Code layout:** data transformations live in `artifacts/portfolio-pulse/src/lib/analytics/` (pure TypeScript, no React): `dates`, `normalize`, `dedupe`, `format`, `inventory`, `listings`, `leasing`, `exceptions`, `filters`, `diagnostics`, `definitions`, `model`. Tests are in `__tests__/` and run with `pnpm --filter @workspace/portfolio-pulse test`.
 
